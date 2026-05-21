@@ -7,6 +7,7 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "es:init": "pnpm --filter @photo-drive/web es:init",
+    "es:reindex": "pnpm --filter @photo-drive/web es:reindex",
     "docker:build": "docker compose build",
     "docker:start": "docker compose up -d",
     "docker:stop": "docker compose down"

@@ -67,6 +67,45 @@ cd ~/source/home-server && docker compose restart nginx
 docker exec home-server-nginx nginx -t
 ```
 
+### `docker builder prune` 후 사진/동영상이 안 보일 때
+
+`docker builder prune -a`는 **빌드 캐시만** 지웁니다. `/mnt/extra/photo-drive` 파일은 그대로여야 합니다.  
+목록은 **Elasticsearch**(`photo-drive-media` 인덱스)에서 읽습니다. 파일만 있고 ES가 비어 있으면 화면이 비어 보입니다.
+
+**1) 스토리지 마운트 확인** (컨테이너가 실제 데이터 경로를 보는지)
+
+```bash
+export STORAGE_HOST_PATH=/mnt/extra/photo-drive
+docker compose up -d app worker media-nginx
+
+docker exec photo-drive-app ls /storage/media | head
+docker exec photo-drive-app sh -c 'find /storage/media -name metadata.json | head -3'
+```
+
+비어 있으면 `STORAGE_HOST_PATH` 없이 올린 것입니다. 반드시 export 후 `docker compose up -d` 하세요.
+
+**2) Elasticsearch 문서 수 확인**
+
+```bash
+curl -s 'http://127.0.0.1:9200/photo-drive-media/_count'   # js-es 포트가 다르면 조정
+```
+
+`count`가 0이면 인덱스만 비어 있는 상태입니다.
+
+**3) 디스크 metadata.json → ES 복구**
+
+```bash
+cd ~/source/photo-drive
+export STORAGE_ROOT=/mnt/extra/photo-drive
+export ELASTICSEARCH_URL=http://127.0.0.1:9200   # js-es 주소
+pnpm install
+pnpm --filter @photo-drive/web es:reindex
+```
+
+완료 후 `/photos` 새로고침. 앨범 인덱스는 별도(`photo-drive-albums`)라 앨범이 비어 있으면 앱에서 다시 만들거나 백업이 있으면 복구하세요.
+
+**주의:** `docker volume prune` / `docker system prune -a --volumes`는 **redis·nginx 캐시 볼륨**을 지울 수 있습니다. `js-es` 데이터까지 지웠다면 위 reindex가 필요합니다.
+
 ## GitHub Actions 배포 (main push)
 
 `main` 브랜치에 push하면 홈서버에 SSH로 배포합니다.

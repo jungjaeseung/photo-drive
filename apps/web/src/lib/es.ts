@@ -90,27 +90,8 @@ export async function searchMedia(params: {
   }
 
   const sort = [
-    {
-      _script: {
-        type: "number",
-        order: "desc",
-        script: {
-          lang: "painless",
-          source: `
-            long minMs = 315532800000L;
-            long pick(String field) {
-              if (!doc.containsKey(field) || doc[field].size() == 0) return -1L;
-              long ms = doc[field].value.toInstant().toEpochMilli();
-              return ms >= minMs ? ms : -1L;
-            }
-            long t = pick("takenAt");
-            if (t < 0) t = pick("uploadedAt");
-            if (t < 0) t = pick("createdAt");
-            return t >= 0 ? t : 0L;
-          `,
-        },
-      },
-    },
+    { takenAt: { order: "desc", unmapped_type: "date", missing: "_last" } },
+    { uploadedAt: { order: "desc", unmapped_type: "date" } },
     { id: { order: "desc", unmapped_type: "keyword" } },
   ];
   const searchBody: Record<string, unknown> = {
@@ -120,9 +101,10 @@ export async function searchMedia(params: {
   };
 
   if (params.cursor) {
-    const [sortAt, id] = params.cursor.split("|");
-    const sortKey = /^\d+$/.test(sortAt) ? Number(sortAt) : sortAt;
-    searchBody.search_after = [sortKey, id];
+    const parts = params.cursor.split("|");
+    if (parts.length >= 3) {
+      searchBody.search_after = [parts[0], parts[1], parts[2]];
+    }
   }
 
   const result = await es.search({
@@ -132,15 +114,15 @@ export async function searchMedia(params: {
 
   const hits = (result.body.hits.hits ?? []) as Array<{
     _source: MediaDocument;
-    sort?: [number | string, string];
+    sort?: [string | number, string | number, string];
   }>;
 
   const hasMore = hits.length > size;
   const items = hits.slice(0, size).map((h) => h._source);
   const last = hits[Math.min(size - 1, hits.length - 1)];
   const nextCursor =
-    hasMore && last?.sort
-      ? `${last.sort[0]}|${last.sort[1]}`
+    hasMore && last?.sort && last.sort.length >= 3
+      ? `${last.sort[0]}|${last.sort[1]}|${last.sort[2]}`
       : undefined;
 
   return { items, nextCursor, hasMore };

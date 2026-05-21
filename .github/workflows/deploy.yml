@@ -29,4 +29,4 @@ jobs:
             git pull origin main
             export STORAGE_HOST_PATH="${STORAGE_HOST_PATH:-/mnt/extra/photo-drive}"
             docker compose build
-            docker compose up -d app worker
+            docker compose up -d app worker media-nginx
