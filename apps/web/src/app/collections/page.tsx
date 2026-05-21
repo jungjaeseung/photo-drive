@@ -69,7 +69,7 @@ export default function CollectionsPage() {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-safe-page">
       <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
         <h1 className="text-xl font-bold">모음</h1>
       </header>

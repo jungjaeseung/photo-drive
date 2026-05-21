@@ -26,7 +26,7 @@ export default function AlbumDetailPage() {
   }, [albumId, base]);
 
   return (
-    <div className="flex h-dvh flex-col pb-24">
+    <div className="flex h-dvh flex-col">
       <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
         <h1 className="text-xl font-bold">{albumName || "앨범"}</h1>
         {gridMode.mode === "select" && gridMode.selectedCount > 0 && (

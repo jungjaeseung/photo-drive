@@ -94,7 +94,7 @@ export function GridActionBar({
 
   return (
     <>
-      <div className="fixed bottom-20 right-4 z-30 flex items-center gap-2">
+      <div className="bottom-above-nav fixed right-4 z-50 flex items-center gap-2">
         <div className="flex rounded-full border border-zinc-200/80 bg-white/95 p-0.5 shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95">
           <button
             type="button"
@@ -179,7 +179,10 @@ export function GridActionBar({
       </div>
 
       {(uploadError || removeError) && (
-        <p className="fixed bottom-36 right-4 z-30 max-w-[220px] rounded bg-red-500/90 px-2 py-1 text-xs text-white">
+        <p
+          className="fixed right-4 z-50 max-w-[220px] rounded bg-red-500/90 px-2 py-1 text-xs text-white"
+          style={{ bottom: "calc(var(--fab-bottom) + 4.5rem)" }}
+        >
           {uploadError ?? removeError}
         </p>
       )}

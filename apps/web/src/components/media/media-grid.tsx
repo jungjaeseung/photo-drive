@@ -107,7 +107,7 @@ export function MediaGrid({
   });
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto pb-24">
+    <div ref={parentRef} className="h-full overflow-auto pb-safe-grid">
       <div
         style={{ height: virtualizer.getTotalSize(), position: "relative" }}
       >

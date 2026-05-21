@@ -59,7 +59,7 @@ export function UploadButton({ onUploaded }: UploadButtonProps) {
       />
       <Button
         size="icon"
-        className="fixed bottom-20 right-4 z-30 shadow-lg"
+        className="bottom-above-nav fixed right-4 z-50 shadow-lg"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
       >
