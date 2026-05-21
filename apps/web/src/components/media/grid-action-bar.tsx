@@ -79,7 +79,6 @@ export function GridActionBar({
           onItemUploaded?.(buildProcessingGridItem(file, data.mediaId));
         }
       }
-      onUploaded?.();
     } catch (e) {
       setUploadError(String(e));
     } finally {

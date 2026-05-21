@@ -1,7 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaGridItem } from "@/components/media/media-grid";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+
+function mergeWithOptimisticProcessing(
+  prev: MediaGridItem[],
+  apiItems: MediaGridItem[]
+): MediaGridItem[] {
+  const apiIds = new Set(apiItems.map((i) => i.id));
+  const pending = prev.filter(
+    (i) => i.status === "processing" && !apiIds.has(i.id)
+  );
+  if (pending.length === 0) return apiItems;
+  return [...pending, ...apiItems];
+}
 
 interface UseMediaListOptions {
   type?: "image" | "video";
@@ -31,8 +44,11 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         const res = await fetch(`${base}/api/media?${params}`);
         const data = await res.json();
 
+        const apiItems = (data.items ?? []) as MediaGridItem[];
         setItems((prev) =>
-          append ? [...prev, ...(data.items ?? [])] : data.items ?? []
+          append
+            ? [...prev, ...apiItems]
+            : mergeWithOptimisticProcessing(prev, apiItems)
         );
         setCursor(data.nextCursor);
         setHasMore(data.hasMore ?? false);
@@ -60,9 +76,11 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   }, [fetchPage]);
 
   const prependProcessingItem = useCallback((item: MediaGridItem) => {
-    setItems((prev) => {
-      if (prev.some((i) => i.id === item.id)) return prev;
-      return [item, ...prev];
+    flushSync(() => {
+      setItems((prev) => {
+        if (prev.some((i) => i.id === item.id)) return prev;
+        return [item, ...prev];
+      });
     });
   }, []);
 

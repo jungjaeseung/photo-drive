@@ -46,7 +46,6 @@ export function UploadButton({ onUploaded, onItemUploaded }: UploadButtonProps) 
           onItemUploaded?.(buildProcessingGridItem(file, data.mediaId));
         }
       }
-      onUploaded?.();
     } catch (e) {
       setError(String(e));
     } finally {
