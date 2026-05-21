@@ -46,7 +46,7 @@ pnpm es:init   # 컨테이너 내 또는 호스트에서 ES 인덱스 생성
 ### 1. 홈서버 준비
 
 - `~/source/photo-drive`에 repo clone
-- `pnpm`, `docker`, `docker compose` 설치
+- `docker`, `docker compose` 설치 (빌드는 Docker 안에서 실행, 호스트에 `pnpm` 불필요)
 - 배포 키 등록 (아래 공개키를 `~/.ssh/authorized_keys`에 추가)
 
 ```bash
@@ -78,8 +78,8 @@ ssh -i ~/.ssh/photo-drive-deploy -p 2222 jung@59.13.92.28 "echo ok"
 cd ~/source/photo-drive
 git pull origin main
 export STORAGE_HOST_PATH=/mnt/extra/photo-drive
-pnpm docker:build
-docker compose up -d app
+docker compose build
+docker compose up -d app worker
 ```
 
 worker도 같이 올리려면 워크플로 마지막 줄을 `docker compose up -d app worker`로 바꾸세요.

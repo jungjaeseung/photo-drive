@@ -24,8 +24,9 @@ jobs:
           command_timeout: 30m
           script: |
             set -euo pipefail
+            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
             cd ~/source/photo-drive
             git pull origin main
             export STORAGE_HOST_PATH="${STORAGE_HOST_PATH:-/mnt/extra/photo-drive}"
-            pnpm docker:build
+            docker compose build
             docker compose up -d app worker
