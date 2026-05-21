@@ -9,6 +9,16 @@
 - 보관함 (날짜별 그룹, infinite scroll, virtualization)
 - 앨범 (grouping only), 사진만/동영상만 뷰
 - Nginx immutable 캐시 (thumbnail/preview)
+- PWA (홈 화면 추가, 분홍 사진 앱 스타일 아이콘)
+
+## PWA (홈 화면에 추가)
+
+- **iPhone:** Safari에서 `/photos` 접속 → 공유 → **홈 화면에 추가**
+- **Android:** Chrome 메뉴 → **앱 설치** 또는 홈 화면에 추가
+
+아이콘·manifest·service worker는 `apps/web/public/`에 있습니다. 프로덕션에서는 `NEXT_PUBLIC_BASE_PATH=/photos`가 설정되어 있어야 합니다.
+
+아이콘 원본: `apps/web/public/icons/image.png` — 변경 후 `pnpm --filter @photo-drive/web icons:generate`로 PNG 크기별 생성.
 
 ## 로컬 개발
 
