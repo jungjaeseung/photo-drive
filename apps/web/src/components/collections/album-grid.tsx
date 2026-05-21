@@ -237,7 +237,7 @@ export function AlbumGrid({
 
   const grid = (
     <div
-      className="grid touch-none gap-2 px-2"
+      className={reorderMode ? "grid touch-none gap-2 px-2" : "grid gap-2 px-2"}
       style={{
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
       }}
