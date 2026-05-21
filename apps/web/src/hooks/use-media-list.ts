@@ -1,6 +1,7 @@
 "use client";
 
 import type { MediaGridItem } from "@/components/media/media-grid";
+import { sortMediaItems } from "@/lib/media-sort";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -12,8 +13,11 @@ function mergeWithOptimisticProcessing(
   const pending = prev.filter(
     (i) => i.status === "processing" && !apiIds.has(i.id)
   );
-  if (pending.length === 0) return apiItems;
-  return [...pending, ...apiItems];
+  if (pending.length === 0) return sortMediaItems(apiItems);
+  const byId = new Map<string, MediaGridItem>();
+  for (const item of pending) byId.set(item.id, item);
+  for (const item of apiItems) byId.set(item.id, item);
+  return sortMediaItems(Array.from(byId.values()));
 }
 
 interface UseMediaListOptions {
@@ -79,7 +83,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     flushSync(() => {
       setItems((prev) => {
         if (prev.some((i) => i.id === item.id)) return prev;
-        return [item, ...prev];
+        return sortMediaItems([item, ...prev]);
       });
     });
   }, []);

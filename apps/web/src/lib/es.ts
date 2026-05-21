@@ -89,7 +89,7 @@ export async function searchMedia(params: {
     must.push({ term: { albumIds: params.albumId } });
   }
 
-  const sort = [{ uploadedAt: "desc" }, { id: "desc" }];
+  const sort = [{ takenAt: "desc" }, { id: "desc" }];
   const searchBody: Record<string, unknown> = {
     size: size + 1,
     query: { bool: { must } },
@@ -97,8 +97,8 @@ export async function searchMedia(params: {
   };
 
   if (params.cursor) {
-    const [uploadedAt, id] = params.cursor.split("|");
-    searchBody.search_after = [uploadedAt, id];
+    const [takenAt, id] = params.cursor.split("|");
+    searchBody.search_after = [takenAt, id];
   }
 
   const result = await es.search({
@@ -118,7 +118,7 @@ export async function searchMedia(params: {
     hasMore && last?.sort
       ? `${last.sort[0]}|${last.sort[1]}`
       : hasMore && items.length
-        ? `${items[items.length - 1].uploadedAt}|${items[items.length - 1].id}`
+        ? `${items[items.length - 1].takenAt}|${items[items.length - 1].id}`
         : undefined;
 
   return { items, nextCursor, hasMore };
