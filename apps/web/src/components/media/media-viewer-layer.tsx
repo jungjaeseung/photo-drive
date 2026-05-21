@@ -1,0 +1,91 @@
+"use client";
+
+import {
+  MediaDetail,
+  type MediaDetailData,
+} from "@/components/media/media-detail";
+import type { MediaViewer } from "@/hooks/use-media-viewer";
+import { useEffect, useRef } from "react";
+
+interface MediaViewerLayerProps {
+  viewer: MediaViewer;
+  onDeleted?: () => void;
+}
+
+export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
+  const pushedRef = useRef(false);
+
+  useEffect(() => {
+    if (!viewer.open) {
+      pushedRef.current = false;
+      return;
+    }
+
+    if (!pushedRef.current) {
+      window.history.pushState({ mediaViewer: true }, "");
+      pushedRef.current = true;
+    }
+
+    const onPopState = () => {
+      viewer.close();
+      pushedRef.current = false;
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [viewer.open, viewer.close]);
+
+  async function handleDelete() {
+    if (!viewer.selectedId) return;
+    if (!confirm("이 미디어를 삭제할까요?")) return;
+
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    await fetch(`${base}/api/media/${viewer.selectedId}`, { method: "DELETE" });
+
+    if (viewer.nextId) {
+      viewer.select(viewer.nextId);
+    } else if (viewer.prevId) {
+      viewer.select(viewer.prevId);
+    } else {
+      viewer.close();
+    }
+    onDeleted?.();
+  }
+
+  const displayMedia: MediaDetailData | null =
+    viewer.media ??
+    (viewer.loading
+      ? {
+          id: viewer.selectedId ?? "",
+          type: "image",
+          status: "processing",
+          filename: "불러오는 중…",
+        }
+      : null);
+
+  if (!displayMedia) return null;
+
+  return (
+    <MediaDetail
+      media={displayMedia}
+      open={viewer.open}
+      onOpenChange={(open) => {
+        if (!open) {
+          if (pushedRef.current) {
+            window.history.back();
+          } else {
+            viewer.close();
+          }
+        }
+      }}
+      onDelete={viewer.media ? handleDelete : undefined}
+      navItems={viewer.items}
+      currentIndex={viewer.index}
+      onNavigate={viewer.goTo}
+      onPrev={viewer.goPrev}
+      onNext={viewer.goNext}
+      hasPrev={viewer.hasNav && !!viewer.prevId}
+      hasNext={viewer.hasNav && !!viewer.nextId}
+    />
+  );
+}

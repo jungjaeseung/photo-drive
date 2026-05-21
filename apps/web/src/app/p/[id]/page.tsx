@@ -10,10 +10,18 @@ export default function MediaPage() {
   const router = useRouter();
   const id = params.id as string;
   const [media, setMedia] = useState<MediaDetailData | null>(null);
-  const { items, index, hasNav, goTo, goPrev, goNext, prevId, nextId } =
-    useMediaNav(id);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  const navigateToId = useCallback(
+    (nextId: string) => {
+      router.push(`/p/${nextId}`);
+    },
+    [router]
+  );
+
+  const { items, index, hasNav, goTo, goPrev, goNext, prevId, nextId } =
+    useMediaNav(id, navigateToId);
 
   const fetchMedia = useCallback(
     (mediaId: string) => {

@@ -4,7 +4,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import { setMediaNavContext } from "@/lib/media-nav-context";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressiveImage } from "./progressive-image";
 
@@ -22,6 +21,7 @@ export interface MediaGridItem {
 interface MediaGridProps {
   items: MediaGridItem[];
   columnCount?: number;
+  onSelect?: (item: MediaGridItem) => void;
 }
 
 function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridItem[] }[] {
@@ -39,8 +39,7 @@ function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridI
     }));
 }
 
-export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
-  const router = useRouter();
+export function MediaGrid({ items, columnCount = 4, onSelect }: MediaGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const sections = useMemo(() => groupByDate(items), [items]);
@@ -139,7 +138,7 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
                           })),
                           item.id
                         );
-                        router.push(`/p/${item.id}`);
+                        onSelect?.(item);
                       }}
                     >
                       <ProgressiveImage

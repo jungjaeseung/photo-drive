@@ -1,7 +1,9 @@
 "use client";
 
 import { MediaGrid } from "@/components/media/media-grid";
+import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
 import { UploadButton } from "@/components/media/upload-button";
+import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 import { useEffect, useRef, useState } from "react";
 
@@ -13,6 +15,7 @@ function getColumnCount(width: number) {
 
 export default function LibraryPage() {
   const { items, loading, hasMore, loadMore, refresh } = useMediaList();
+  const viewer = useMediaViewer();
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(4);
 
@@ -48,7 +51,11 @@ export default function LibraryPage() {
             사진이나 동영상을 업로드하세요
           </div>
         ) : (
-          <MediaGrid items={items} columnCount={columnCount} />
+          <MediaGrid
+            items={items}
+            columnCount={columnCount}
+            onSelect={(item) => viewer.select(item.id)}
+          />
         )}
         <div ref={sentinelRef} className="h-4" />
         {loading && (
@@ -59,6 +66,7 @@ export default function LibraryPage() {
         )}
       </div>
       <UploadButton onUploaded={refresh} />
+      <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>
   );
 }

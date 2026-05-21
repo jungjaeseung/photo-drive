@@ -1,6 +1,8 @@
 "use client";
 
 import { MediaGrid } from "@/components/media/media-grid";
+import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
+import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,7 +10,8 @@ import { useEffect, useState } from "react";
 export default function AlbumDetailPage() {
   const params = useParams();
   const albumId = params.id as string;
-  const { items } = useMediaList({ albumId });
+  const { items, refresh } = useMediaList({ albumId });
+  const viewer = useMediaViewer();
   const [albumName, setAlbumName] = useState("");
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -25,8 +28,13 @@ export default function AlbumDetailPage() {
         <h1 className="text-xl font-bold">{albumName || "앨범"}</h1>
       </header>
       <div className="flex-1 overflow-hidden">
-        <MediaGrid items={items} columnCount={4} />
+        <MediaGrid
+          items={items}
+          columnCount={4}
+          onSelect={(item) => viewer.select(item.id)}
+        />
       </div>
+      <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>
   );
 }

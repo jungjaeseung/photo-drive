@@ -5,21 +5,24 @@ import {
   updateMediaNavCurrentId,
   type MediaNavItem,
 } from "@/lib/media-nav-context";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-export function useMediaNav(currentId: string) {
-  const router = useRouter();
+export function useMediaNav(
+  currentId: string | null,
+  onNavigate: (id: string) => void
+) {
   const [items, setItems] = useState<MediaNavItem[]>([]);
 
   useEffect(() => {
     const ctx = getMediaNavContext();
     setItems(ctx?.items ?? []);
-    updateMediaNavCurrentId(currentId);
+    if (currentId) {
+      updateMediaNavCurrentId(currentId);
+    }
   }, [currentId]);
 
   const index = useMemo(
-    () => items.findIndex((item) => item.id === currentId),
+    () => (currentId ? items.findIndex((item) => item.id === currentId) : -1),
     [items, currentId]
   );
 
@@ -32,9 +35,9 @@ export function useMediaNav(currentId: string) {
   const goTo = useCallback(
     (id: string) => {
       updateMediaNavCurrentId(id);
-      router.push(`/p/${id}`);
+      onNavigate(id);
     },
-    [router]
+    [onNavigate]
   );
 
   const goPrev = useCallback(() => {
