@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { FolderOpen, Images, LayoutGrid } from "lucide-react";
+import { Images, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,7 +20,7 @@ export function BottomNav() {
           const active =
             href === "/"
               ? pathname === "/" || pathname.startsWith("/p/")
-              : pathname.startsWith(href);
+              : pathname.startsWith("/collections");
           return (
             <Link
               key={href}
@@ -35,16 +35,6 @@ export function BottomNav() {
             </Link>
           );
         })}
-        <Link
-          href="/collections/albums"
-          className={cn(
-            "flex flex-col items-center gap-0.5 px-4 py-1 text-xs",
-            pathname.includes("/albums") ? "text-blue-500" : "text-zinc-500"
-          )}
-        >
-          <FolderOpen className="h-6 w-6" />
-          <span>앨범</span>
-        </Link>
       </div>
     </nav>
   );
