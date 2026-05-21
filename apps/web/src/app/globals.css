@@ -38,6 +38,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 /* 플로팅 액션 바: 하단 네비 위 */
 .bottom-above-nav {
   bottom: var(--fab-bottom);

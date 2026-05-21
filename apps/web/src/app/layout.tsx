@@ -47,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="min-h-dvh antialiased">
+      <body className="min-h-dvh select-none antialiased">
         <main className="mx-auto min-h-dvh max-w-5xl">{children}</main>
         <BottomNav />
         <PwaRegister />

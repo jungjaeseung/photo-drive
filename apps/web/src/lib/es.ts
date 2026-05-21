@@ -162,6 +162,30 @@ export async function deleteAlbumDoc(id: string): Promise<void> {
   await es.delete({ index: ES_INDEX_ALBUMS, id, refresh: "wait_for" });
 }
 
+export async function detachAlbumFromAllMedia(
+  albumId: string
+): Promise<number> {
+  const es = getEsClient();
+  const result = await es.updateByQuery({
+    index: ES_INDEX_MEDIA,
+    refresh: true,
+    body: {
+      query: {
+        bool: {
+          must: [{ term: { albumIds: albumId } }],
+          must_not: [{ exists: { field: "deletedAt" } }],
+        },
+      },
+      script: {
+        source:
+          "if (ctx._source.albumIds != null) { ctx._source.albumIds.removeIf(id -> id == params.albumId); }",
+        params: { albumId },
+      },
+    },
+  });
+  return result.body.updated ?? 0;
+}
+
 export async function listAlbums(): Promise<AlbumDocument[]> {
   const es = getEsClient();
   const result = await es.search({

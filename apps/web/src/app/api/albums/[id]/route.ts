@@ -1,6 +1,7 @@
 import {
   countMediaInAlbum,
   deleteAlbumDoc,
+  detachAlbumFromAllMedia,
   getAlbumById,
   updateAlbum,
 } from "@/lib/es";
@@ -50,6 +51,7 @@ export async function DELETE(
   if (!album) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  const mediaUpdated = await detachAlbumFromAllMedia(id);
   await deleteAlbumDoc(id);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, mediaUpdated });
 }

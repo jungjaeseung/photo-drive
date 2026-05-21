@@ -99,6 +99,29 @@ export default function CollectionsPage() {
     }
   }
 
+  async function handleDeleteAlbum(albumId: string) {
+    const res = await fetch(`${base}/api/albums/${albumId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "앨범 삭제 실패");
+    }
+    if (reorderMode) {
+      setDraftAlbums((prev) => prev.filter((a) => a.id !== albumId));
+    }
+    setAlbums((prev) => prev.filter((a) => a.id !== albumId));
+  }
+
+  useEffect(() => {
+    if (!reorderMode) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [reorderMode]);
+
   return (
     <div className="pb-safe-page">
       <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
@@ -180,6 +203,7 @@ export default function CollectionsPage() {
             albums={reorderMode ? draftAlbums : albums}
             reorderMode={reorderMode}
             onReorder={setDraftAlbums}
+            onDelete={handleDeleteAlbum}
           />
         )}
       </section>

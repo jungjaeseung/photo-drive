@@ -5,6 +5,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -17,7 +18,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FolderOpen, GripVertical } from "lucide-react";
+import { FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -33,6 +34,7 @@ interface AlbumGridProps {
   columnCount?: number;
   reorderMode?: boolean;
   onReorder?: (albums: AlbumGridItem[]) => void;
+  onDelete?: (albumId: string) => void | Promise<void>;
 }
 
 function getColumnCount(width: number) {
@@ -41,7 +43,13 @@ function getColumnCount(width: number) {
   return 4;
 }
 
-function AlbumCardContent({ album }: { album: AlbumGridItem }) {
+function AlbumCardContent({
+  album,
+  reorderMode,
+}: {
+  album: AlbumGridItem;
+  reorderMode?: boolean;
+}) {
   return (
     <>
       <div className="relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
@@ -50,7 +58,12 @@ function AlbumCardContent({ album }: { album: AlbumGridItem }) {
           <img
             src={album.coverThumbnailUrl}
             alt=""
-            className="h-full w-full object-cover"
+            draggable={false}
+            className={
+              reorderMode
+                ? "pointer-events-none h-full w-full select-none object-cover"
+                : "h-full w-full object-cover"
+            }
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
@@ -67,9 +80,13 @@ function AlbumCardContent({ album }: { album: AlbumGridItem }) {
 function SortableAlbumItem({
   album,
   reorderMode,
+  onDelete,
+  deletingId,
 }: {
   album: AlbumGridItem;
   reorderMode: boolean;
+  onDelete?: (albumId: string) => void | Promise<void>;
+  deletingId: string | null;
 }) {
   const {
     attributes,
@@ -86,6 +103,8 @@ function SortableAlbumItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const isDeleting = deletingId === album.id;
+
   if (!reorderMode) {
     return (
       <Link
@@ -97,23 +116,52 @@ function SortableAlbumItem({
     );
   }
 
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isDeleting || !onDelete) return;
+    if (
+      !confirm(
+        `"${album.name}" 앨범을 삭제할까요?\n(사진·동영상은 보관함에 남습니다)`
+      )
+    ) {
+      return;
+    }
+    await onDelete(album.id);
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="relative flex flex-col overflow-hidden rounded-lg bg-white ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700"
+      className="relative flex touch-none flex-col overflow-hidden rounded-lg bg-white ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700"
     >
       <button
         type="button"
-        className="absolute left-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-md bg-black/40 text-white"
+        className="absolute left-1 top-1 z-10 flex h-8 w-8 touch-none items-center justify-center rounded-md bg-black/40 text-white"
         aria-label="드래그하여 순서 변경"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
+      {onDelete && (
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={handleDelete}
+          className="absolute right-1 top-1 z-10 flex h-8 w-8 touch-none items-center justify-center rounded-md bg-black/40 text-white disabled:opacity-50"
+          aria-label={`${album.name} 앨범 삭제`}
+        >
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </button>
+      )}
       <div className="p-1 pt-2">
-        <AlbumCardContent album={album} />
+        <AlbumCardContent album={album} reorderMode />
       </div>
     </div>
   );
@@ -124,9 +172,11 @@ export function AlbumGrid({
   columnCount: columnCountProp,
   reorderMode = false,
   onReorder,
+  onDelete,
 }: AlbumGridProps) {
   const [items, setItems] = useState(albums);
   const [columnCount, setColumnCount] = useState(columnCountProp ?? 3);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     setItems(albums);
@@ -144,6 +194,9 @@ export function AlbumGrid({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -161,6 +214,19 @@ export function AlbumGrid({
     });
   }
 
+  async function handleDeleteAlbum(albumId: string) {
+    if (!onDelete) return;
+    setDeletingId(albumId);
+    try {
+      await onDelete(albumId);
+      setItems((prev) => prev.filter((a) => a.id !== albumId));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (items.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-sm text-zinc-500">
@@ -171,7 +237,7 @@ export function AlbumGrid({
 
   const grid = (
     <div
-      className="grid gap-2 px-2"
+      className="grid touch-none gap-2 px-2"
       style={{
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
       }}
@@ -181,6 +247,8 @@ export function AlbumGrid({
           key={album.id}
           album={album}
           reorderMode={reorderMode}
+          onDelete={reorderMode ? handleDeleteAlbum : undefined}
+          deletingId={deletingId}
         />
       ))}
     </div>
