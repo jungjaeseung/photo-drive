@@ -1,6 +1,28 @@
 import { syncAlbumCover } from "@/lib/album-cover";
-import { getAlbumById, getMediaById, updateMedia } from "@/lib/es";
+import {
+  appendAlbumToMediaBulk,
+  getAlbumById,
+  refreshMediaIndex,
+  removeAlbumFromMediaBulk,
+} from "@/lib/es";
 import { NextRequest, NextResponse } from "next/server";
+
+function parseMediaIds(body: {
+  mediaId?: string;
+  mediaIds?: unknown;
+}): string[] {
+  if (Array.isArray(body.mediaIds)) {
+    return [
+      ...new Set(
+        body.mediaIds.filter((id): id is string => typeof id === "string" && !!id)
+      ),
+    ];
+  }
+  if (typeof body.mediaId === "string" && body.mediaId) {
+    return [body.mediaId];
+  }
+  return [];
+}
 
 export async function POST(
   request: NextRequest,
@@ -13,21 +35,19 @@ export async function POST(
   }
 
   const body = await request.json();
-  const mediaId = body.mediaId as string;
-  if (!mediaId) {
-    return NextResponse.json({ error: "mediaId required" }, { status: 400 });
+  const mediaIds = parseMediaIds(body);
+  if (mediaIds.length === 0) {
+    return NextResponse.json(
+      { error: "mediaId or mediaIds required" },
+      { status: 400 }
+    );
   }
 
-  const media = await getMediaById(mediaId);
-  if (!media) {
-    return NextResponse.json({ error: "media not found" }, { status: 404 });
-  }
-
-  const albumIds = Array.from(new Set([...media.albumIds, albumId]));
-  await updateMedia(mediaId, { albumIds });
+  const updated = await appendAlbumToMediaBulk(albumId, mediaIds);
+  await refreshMediaIndex();
   await syncAlbumCover(albumId);
 
-  return NextResponse.json({ ok: true, albumIds });
+  return NextResponse.json({ ok: true, updated, total: mediaIds.length });
 }
 
 export async function DELETE(
@@ -36,19 +56,21 @@ export async function DELETE(
 ) {
   const { id: albumId } = await params;
   const { searchParams } = request.nextUrl;
-  const mediaId = searchParams.get("mediaId");
-  if (!mediaId) {
+
+  let mediaIds = searchParams.getAll("mediaId");
+  const single = searchParams.get("mediaId");
+  if (mediaIds.length === 0 && single) {
+    mediaIds = [single];
+  }
+  mediaIds = [...new Set(mediaIds.filter(Boolean))];
+
+  if (mediaIds.length === 0) {
     return NextResponse.json({ error: "mediaId required" }, { status: 400 });
   }
 
-  const media = await getMediaById(mediaId);
-  if (!media) {
-    return NextResponse.json({ error: "media not found" }, { status: 404 });
-  }
-
-  const albumIds = media.albumIds.filter((a) => a !== albumId);
-  await updateMedia(mediaId, { albumIds });
+  const updated = await removeAlbumFromMediaBulk(albumId, mediaIds);
+  await refreshMediaIndex();
   await syncAlbumCover(albumId);
 
-  return NextResponse.json({ ok: true, albumIds });
+  return NextResponse.json({ ok: true, updated, total: mediaIds.length });
 }

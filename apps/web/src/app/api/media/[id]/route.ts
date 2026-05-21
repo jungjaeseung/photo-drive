@@ -1,3 +1,4 @@
+import { syncAlbumCover } from "@/lib/album-cover";
 import { getMediaById, updateMedia } from "@/lib/es";
 import { enqueueMediaJob } from "@/lib/queue";
 import { getMediaAssetUrl } from "@/lib/media-url";
@@ -43,6 +44,8 @@ export async function DELETE(
     mediaId: id,
     storageRoot: getStorageRoot(),
   });
+
+  await Promise.all(doc.albumIds.map((albumId) => syncAlbumCover(albumId)));
 
   return NextResponse.json({ ok: true, mediaId: id });
 }

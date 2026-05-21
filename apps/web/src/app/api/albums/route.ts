@@ -1,5 +1,5 @@
 import { resolveAlbumCoverThumbnail } from "@/lib/album-cover";
-import { indexAlbum, listAlbums } from "@/lib/es";
+import { countMediaInAlbum, indexAlbum, listAlbums } from "@/lib/es";
 import type { AlbumDocument } from "@photo-drive/shared";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
@@ -9,6 +9,7 @@ export async function GET() {
   const items = await Promise.all(
     albums.map(async (album) => ({
       ...album,
+      mediaCount: await countMediaInAlbum(album.id),
       coverThumbnailUrl: await resolveAlbumCoverThumbnail(album),
     }))
   );

@@ -2,16 +2,7 @@ export async function addMediaToAlbum(
   albumId: string,
   mediaId: string
 ): Promise<void> {
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const res = await fetch(`${base}/api/albums/${albumId}/media`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mediaId }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error ?? "앨범 추가 실패");
-  }
+  await addMediaToAlbums(albumId, [mediaId]);
 }
 
 export async function addMediaToAlbums(
@@ -19,33 +10,45 @@ export async function addMediaToAlbums(
   mediaIds: string[],
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
-  const total = mediaIds.length;
-  for (let i = 0; i < total; i++) {
-    await addMediaToAlbum(albumId, mediaIds[i]);
-    onProgress?.(i + 1, total);
+  if (mediaIds.length === 0) return;
+
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const res = await fetch(`${base}/api/albums/${albumId}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mediaIds }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "앨범 추가 실패");
   }
+  onProgress?.(mediaIds.length, mediaIds.length);
 }
 
 export async function removeMediaFromAlbum(
   albumId: string,
   mediaId: string
 ): Promise<void> {
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const res = await fetch(
-    `${base}/api/albums/${albumId}/media?mediaId=${encodeURIComponent(mediaId)}`,
-    { method: "DELETE" }
-  );
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error ?? "앨범에서 제거 실패");
-  }
+  await removeMediaFromAlbums(albumId, [mediaId]);
 }
 
 export async function removeMediaFromAlbums(
   albumId: string,
   mediaIds: string[]
 ): Promise<void> {
-  for (const mediaId of mediaIds) {
-    await removeMediaFromAlbum(albumId, mediaId);
+  if (mediaIds.length === 0) return;
+
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const params = new URLSearchParams();
+  for (const id of mediaIds) {
+    params.append("mediaId", id);
+  }
+  const res = await fetch(
+    `${base}/api/albums/${albumId}/media?${params.toString()}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "앨범에서 제거 실패");
   }
 }

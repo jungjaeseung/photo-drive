@@ -165,6 +165,85 @@ export async function deleteAlbumDoc(id: string): Promise<void> {
   await es.delete({ index: ES_INDEX_ALBUMS, id, refresh: "wait_for" });
 }
 
+const ALBUM_MEDIA_BULK_CHUNK = 500;
+
+/** 미디어 여러 건에 albumId를 한 번에 추가 (refresh는 호출 쪽에서 1회) */
+export async function appendAlbumToMediaBulk(
+  albumId: string,
+  mediaIds: string[]
+): Promise<number> {
+  if (mediaIds.length === 0) return 0;
+  const es = getEsClient();
+  let updated = 0;
+
+  for (let i = 0; i < mediaIds.length; i += ALBUM_MEDIA_BULK_CHUNK) {
+    const chunk = mediaIds.slice(i, i + ALBUM_MEDIA_BULK_CHUNK);
+    const result = await es.updateByQuery({
+      index: ES_INDEX_MEDIA,
+      body: {
+        query: {
+          bool: {
+            must: [{ ids: { values: chunk } }],
+            must_not: [{ exists: { field: "deletedAt" } }],
+          },
+        },
+        script: {
+          source: `
+            if (ctx._source.albumIds == null) { ctx._source.albumIds = []; }
+            if (!ctx._source.albumIds.contains(params.albumId)) {
+              ctx._source.albumIds.add(params.albumId);
+            }
+          `,
+          lang: "painless",
+          params: { albumId },
+        },
+      },
+    });
+    updated += result.body.updated ?? 0;
+  }
+
+  return updated;
+}
+
+/** 미디어 여러 건에서 albumId를 한 번에 제거 */
+export async function removeAlbumFromMediaBulk(
+  albumId: string,
+  mediaIds: string[]
+): Promise<number> {
+  if (mediaIds.length === 0) return 0;
+  const es = getEsClient();
+  let updated = 0;
+
+  for (let i = 0; i < mediaIds.length; i += ALBUM_MEDIA_BULK_CHUNK) {
+    const chunk = mediaIds.slice(i, i + ALBUM_MEDIA_BULK_CHUNK);
+    const result = await es.updateByQuery({
+      index: ES_INDEX_MEDIA,
+      body: {
+        query: {
+          bool: {
+            must: [{ ids: { values: chunk } }],
+            must_not: [{ exists: { field: "deletedAt" } }],
+          },
+        },
+        script: {
+          source:
+            "if (ctx._source.albumIds != null) { ctx._source.albumIds.removeIf(id -> id == params.albumId); }",
+          lang: "painless",
+          params: { albumId },
+        },
+      },
+    });
+    updated += result.body.updated ?? 0;
+  }
+
+  return updated;
+}
+
+export async function refreshMediaIndex(): Promise<void> {
+  const es = getEsClient();
+  await es.indices.refresh({ index: ES_INDEX_MEDIA });
+}
+
 export async function detachAlbumFromAllMedia(
   albumId: string
 ): Promise<number> {
