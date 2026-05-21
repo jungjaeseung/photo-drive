@@ -34,8 +34,12 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   optionsRef.current = options;
 
   const fetchPage = useCallback(
-    async (nextCursor?: string, append = false) => {
-      setLoading(true);
+    async (
+      nextCursor?: string,
+      append = false,
+      options?: { silent?: boolean }
+    ) => {
+      if (!options?.silent) setLoading(true);
       try {
         const params = new URLSearchParams();
         const opts = optionsRef.current;
@@ -59,7 +63,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         setCursor(data.nextCursor);
         setHasMore(data.hasMore ?? false);
       } finally {
-        setLoading(false);
+        if (!options?.silent) setLoading(false);
       }
     },
     []
@@ -95,7 +99,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   useEffect(() => {
     if (!hasProcessing) return;
     const interval = setInterval(() => {
-      fetchPage(undefined, false);
+      fetchPage(undefined, false, { silent: true });
     }, 3000);
     return () => clearInterval(interval);
   }, [hasProcessing, fetchPage]);

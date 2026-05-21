@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { getEffectiveSortIso, sortMediaItems } from "@/lib/media-sort";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
 import { SelectionCheck } from "./selection-check";
 
@@ -116,6 +116,38 @@ export function MediaGrid({
       rows[index].kind === "header" ? 44 : rowHeight,
     overscan: 4,
   });
+
+  const scrollAnchorIdRef = useRef<string | null>(null);
+  const prevFirstItemIdRef = useRef<string | undefined>();
+
+  useEffect(() => {
+    const visible = virtualizer.getVirtualItems();
+    for (const vr of visible) {
+      const row = rows[vr.index];
+      if (row?.kind === "row" && row.items[0]) {
+        scrollAnchorIdRef.current = row.items[0].id;
+        return;
+      }
+    }
+  });
+
+  useLayoutEffect(() => {
+    const prevFirst = prevFirstItemIdRef.current;
+    const newFirst = items[0]?.id;
+    prevFirstItemIdRef.current = newFirst;
+
+    if (!prevFirst || !newFirst || prevFirst === newFirst) return;
+
+    const anchorId = scrollAnchorIdRef.current;
+    if (!anchorId) return;
+
+    const rowIndex = rows.findIndex(
+      (r) => r.kind === "row" && r.items.some((i) => i.id === anchorId)
+    );
+    if (rowIndex >= 0) {
+      virtualizer.scrollToIndex(rowIndex, { align: "start" });
+    }
+  }, [items, rows, virtualizer]);
 
   return (
     <div ref={parentRef} className="h-full overflow-auto pb-safe-grid">
