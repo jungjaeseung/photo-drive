@@ -57,9 +57,6 @@ export function pickTakenAt(
 
 const MIN_CAPTURE_MS = new Date("1980-01-01T00:00:00.000Z").getTime();
 
-/** 업로드 시각보다 너무 오래된 takenAt = 임베딩 EXIF(다운로드·재저장)로 간주 */
-const STALE_EXIF_GAP_MS = 7 * 24 * 60 * 60 * 1000;
-
 /** 촬영 시각으로 쓸 수 있는지 (빈 값·1970년대 등 제외) */
 export function isPlausibleCaptureDate(iso: string): boolean {
   const ms = new Date(iso).getTime();
@@ -68,40 +65,22 @@ export function isPlausibleCaptureDate(iso: string): boolean {
 }
 
 /**
- * 그리드·ES 정렬용 통합 시각 (타입·필드별로 나뉘지 않게 한 축으로)
- * - takenAt이 업로드보다 7일+ 이전이면 임베딩 EXIF로 보고 uploadedAt 사용
- * - 그 외 plausible takenAt → uploadedAt → createdAt
+ * 그리드·ES 정렬용 통합 시각: plausible takenAt → uploadedAt → createdAt
+ * (worker가 넣은 takenAt 그대로 — 업로드일로 덮어쓰지 않음)
  */
 export function computeSortAt(doc: {
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): string {
-  const takenIso = doc.takenAt ? parseMediaDate(doc.takenAt) : undefined;
-  const uploadedIso = doc.uploadedAt ? parseMediaDate(doc.uploadedAt) : undefined;
-
-  if (
-    takenIso &&
-    uploadedIso &&
-    isPlausibleCaptureDate(takenIso) &&
-    isPlausibleCaptureDate(uploadedIso)
-  ) {
-    const gapMs =
-      new Date(uploadedIso).getTime() - new Date(takenIso).getTime();
-    if (gapMs > STALE_EXIF_GAP_MS) {
-      const fileIso = pickTakenAtInOrder(
-        [doc.exif?.FileModifyDate, doc.exif?.FileCreateDate],
-        { notAfter: new Date(uploadedIso) }
-      );
-      if (fileIso && isPlausibleCaptureDate(fileIso)) return fileIso;
-      return uploadedIso;
-    }
-    return takenIso;
+  if (doc.takenAt) {
+    const iso = parseMediaDate(doc.takenAt);
+    if (iso && isPlausibleCaptureDate(iso)) return iso;
   }
-
-  if (takenIso && isPlausibleCaptureDate(takenIso)) return takenIso;
-  if (uploadedIso) return uploadedIso;
+  if (doc.uploadedAt) {
+    const iso = parseMediaDate(doc.uploadedAt);
+    if (iso) return iso;
+  }
   if (doc.createdAt) {
     const iso = parseMediaDate(doc.createdAt);
     if (iso) return iso;
@@ -109,13 +88,15 @@ export function computeSortAt(doc: {
   return new Date(0).toISOString();
 }
 
-/** 그리드 표시·클라이언트 정렬 (항상 최신 규칙으로 재계산) */
+/**
+ * 화면 정렬·날짜 구간 — 항상 takenAt 기준 재계산
+ * (ES sortAt는 백필/색인용, 잘못 백필된 값이 UI에 남지 않게 함)
+ */
 export function getEffectiveSortIso(doc: {
   sortAt?: string | null;
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): string {
   return computeSortAt(doc);
 }
@@ -125,7 +106,6 @@ export function getEffectiveSortMillis(doc: {
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): number {
   return new Date(getEffectiveSortIso(doc)).getTime();
 }
