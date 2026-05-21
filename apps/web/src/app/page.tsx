@@ -6,7 +6,7 @@ import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
 import { useMediaGridInteraction } from "@/hooks/use-media-grid-interaction";
 import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 function getColumnCount(width: number) {
   if (width < 640) return 3;
@@ -19,7 +19,6 @@ export default function LibraryPage() {
     useMediaList();
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(4);
 
   useEffect(() => {
@@ -28,19 +27,6 @@ export default function LibraryPage() {
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -67,14 +53,10 @@ export default function LibraryPage() {
             onToggleSelect={gridMode.toggleSelect}
             onToggleGroup={gridMode.toggleGroup}
             onLongPress={handleLongPress}
+            hasMore={hasMore}
+            loadingMore={loading}
+            onLoadMore={loadMore}
           />
-        )}
-        <div ref={sentinelRef} className="h-4" />
-        {loading && (
-          <p className="py-4 text-center text-sm text-zinc-500">불러오는 중…</p>
-        )}
-        {!hasMore && items.length > 0 && (
-          <p className="py-4 text-center text-xs text-zinc-400">모두 불러옴</p>
         )}
       </div>
       <GridActionBar

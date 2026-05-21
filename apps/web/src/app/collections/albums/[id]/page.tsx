@@ -14,7 +14,9 @@ import { useEffect, useState } from "react";
 export default function AlbumDetailPage() {
   const params = useParams();
   const albumId = params.id as string;
-  const { items, refresh } = useMediaList({ albumId });
+  const { items, loading, hasMore, loadMore, refresh } = useMediaList({
+    albumId,
+  });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
   const [albumName, setAlbumName] = useState("");
@@ -56,6 +58,9 @@ export default function AlbumDetailPage() {
           onToggleSelect={gridMode.toggleSelect}
           onToggleGroup={gridMode.toggleGroup}
           onLongPress={handleLongPress}
+          hasMore={hasMore}
+          loadingMore={loading}
+          onLoadMore={loadMore}
         />
       </div>
       <GridActionBar

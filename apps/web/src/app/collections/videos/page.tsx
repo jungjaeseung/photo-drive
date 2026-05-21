@@ -8,9 +8,10 @@ import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
 export default function VideosOnlyPage() {
-  const { items, refresh, prependProcessingItem } = useMediaList({
-    type: "video",
-  });
+  const { items, loading, hasMore, loadMore, refresh, prependProcessingItem } =
+    useMediaList({
+      type: "video",
+    });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
 
@@ -34,6 +35,9 @@ export default function VideosOnlyPage() {
           onToggleSelect={gridMode.toggleSelect}
           onToggleGroup={gridMode.toggleGroup}
           onLongPress={handleLongPress}
+          hasMore={hasMore}
+          loadingMore={loading}
+          onLoadMore={loadMore}
         />
       </div>
       <GridActionBar

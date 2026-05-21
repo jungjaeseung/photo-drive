@@ -31,6 +31,9 @@ interface MediaGridProps {
   onToggleSelect?: (id: string) => void;
   onToggleGroup?: (ids: string[]) => void;
   onLongPress?: (item: MediaGridItem) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function groupByDate(
@@ -60,8 +63,12 @@ export function MediaGrid({
   onToggleSelect,
   onToggleGroup,
   onLongPress,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: MediaGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const sections = useMemo(() => groupByDate(items), [items]);
 
@@ -151,10 +158,28 @@ export function MediaGrid({
     }
   }, [items, rows, virtualizer]);
 
+  const totalSize = virtualizer.getTotalSize();
+
+  useEffect(() => {
+    if (!onLoadMore || !hasMore) return;
+    const root = parentRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onLoadMore();
+      },
+      { root, rootMargin: "400px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore, totalSize, items.length]);
+
   return (
     <div ref={parentRef} className="h-full overflow-auto pb-safe-grid">
       <div
-        style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+        style={{ height: totalSize, position: "relative" }}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const row = rows[virtualRow.index];
@@ -218,7 +243,21 @@ export function MediaGrid({
             </div>
           );
         })}
+        {onLoadMore && hasMore && (
+          <div
+            ref={loadMoreSentinelRef}
+            className="pointer-events-none absolute left-0 w-full"
+            style={{ top: totalSize, height: 48 }}
+            aria-hidden
+          />
+        )}
       </div>
+      {loadingMore && (
+        <p className="py-4 text-center text-sm text-zinc-500">불러오는 중…</p>
+      )}
+      {!hasMore && items.length > 0 && onLoadMore && (
+        <p className="py-3 text-center text-xs text-zinc-400">모두 불러옴</p>
+      )}
     </div>
   );
 }

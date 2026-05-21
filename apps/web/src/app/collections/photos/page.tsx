@@ -8,9 +8,10 @@ import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
 export default function PhotosOnlyPage() {
-  const { items, refresh, prependProcessingItem } = useMediaList({
-    type: "image",
-  });
+  const { items, loading, hasMore, loadMore, refresh, prependProcessingItem } =
+    useMediaList({
+      type: "image",
+    });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
 
@@ -34,6 +35,9 @@ export default function PhotosOnlyPage() {
           onToggleSelect={gridMode.toggleSelect}
           onToggleGroup={gridMode.toggleGroup}
           onLongPress={handleLongPress}
+          hasMore={hasMore}
+          loadingMore={loading}
+          onLoadMore={loadMore}
         />
       </div>
       <GridActionBar
