@@ -20,8 +20,17 @@ export default function MediaPage() {
     [router]
   );
 
-  const { items, index, hasNav, goTo, goPrev, goNext, prevId, nextId } =
-    useMediaNav(id, navigateToId);
+  const {
+    items,
+    index,
+    hasNav,
+    goTo,
+    goPrev,
+    goNext,
+    prevId,
+    nextId,
+    removeItem,
+  } = useMediaNav(id, navigateToId);
 
   const fetchMedia = useCallback(
     (mediaId: string) => {
@@ -39,11 +48,11 @@ export default function MediaPage() {
 
   async function handleDelete() {
     if (!confirm("이 미디어를 삭제할까요?")) return;
+    const nextTarget = nextId ?? prevId;
     await fetch(`${base}/api/media/${id}`, { method: "DELETE" });
-    if (nextId) {
-      goTo(nextId);
-    } else if (prevId) {
-      goTo(prevId);
+    removeItem(id);
+    if (nextTarget) {
+      goTo(nextTarget);
     } else {
       router.push("/");
     }

@@ -2,6 +2,7 @@
 
 import {
   getMediaNavContext,
+  removeMediaNavItem,
   updateMediaNavCurrentId,
   type MediaNavItem,
 } from "@/lib/media-nav-context";
@@ -48,6 +49,10 @@ export function useMediaNav(
     if (nextId) goTo(nextId);
   }, [nextId, goTo]);
 
+  const removeItem = useCallback((id: string) => {
+    setItems(removeMediaNavItem(id));
+  }, []);
+
   return {
     items,
     index,
@@ -57,5 +62,6 @@ export function useMediaNav(
     goTo,
     goPrev,
     goNext,
+    removeItem,
   };
 }

@@ -42,13 +42,14 @@ export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
 
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
     const deletedId = viewer.selectedId;
+    const nextTarget = viewer.nextId ?? viewer.prevId;
+
     await fetch(`${base}/api/media/${deletedId}`, { method: "DELETE" });
     invalidatePrefetchedMedia(deletedId);
+    viewer.removeItem(deletedId);
 
-    if (viewer.nextId) {
-      viewer.select(viewer.nextId);
-    } else if (viewer.prevId) {
-      viewer.select(viewer.prevId);
+    if (nextTarget) {
+      viewer.select(nextTarget);
     } else {
       viewer.close();
     }

@@ -2,6 +2,7 @@
 
 import type { MediaDetailData } from "@/components/media/media-detail";
 import { useMediaNav } from "@/hooks/use-media-nav";
+import { getMediaNavContext } from "@/lib/media-nav-context";
 import {
   getPrefetchedMedia,
   prefetchAdjacentMedia,
@@ -26,6 +27,7 @@ export function useMediaViewer() {
   }, []);
 
   const nav = useMediaNav(selectedId, select);
+  const { removeItem } = nav;
 
   useEffect(() => {
     if (!selectedId) {
@@ -44,14 +46,36 @@ export function useMediaViewer() {
 
     let cancelled = false;
     prefetchMediaDetail(selectedId, base).then((data) => {
-      if (!cancelled && data) setMedia(data);
-      if (!cancelled) setLoading(false);
+      if (cancelled) return;
+      if (data) {
+        setMedia(data);
+        setLoading(false);
+        return;
+      }
+
+      const ctx = getMediaNavContext();
+      const list = ctx?.items ?? [];
+      const idx = list.findIndex((item) => item.id === selectedId);
+      const fallbackId =
+        idx >= 0
+          ? (list[idx + 1]?.id ?? list[idx - 1]?.id)
+          : undefined;
+
+      removeItem(selectedId);
+      setLoading(false);
+      setMedia(null);
+
+      if (fallbackId) {
+        select(fallbackId);
+      } else {
+        setSelectedId(null);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedId, base]);
+  }, [selectedId, base, removeItem, select]);
 
   useEffect(() => {
     if (!selectedId || !media) return;

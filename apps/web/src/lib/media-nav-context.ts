@@ -38,3 +38,14 @@ export function updateMediaNavCurrentId(currentId: string): void {
     JSON.stringify({ ...ctx, currentId })
   );
 }
+
+export function removeMediaNavItem(id: string): MediaNavItem[] {
+  const ctx = getMediaNavContext();
+  if (!ctx) return [];
+  const items = ctx.items.filter((item) => item.id !== id);
+  sessionStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ ...ctx, items })
+  );
+  return items;
+}
