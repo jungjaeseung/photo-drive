@@ -14,20 +14,35 @@ export function parseMediaDate(value: unknown): string | undefined {
   const raw = String(value).trim();
   if (!raw) return undefined;
 
-  // EXIF "YYYY:MM:DD HH:mm:ss"
+  // EXIF "YYYY:MM:DD HH:mm:ss" — 타임존 없음, 한국 현지 시각으로 해석
   const exifMatch = raw.match(
     /^(\d{4}):(\d{2}):(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?/
   );
   if (exifMatch) {
-    const [, y, mo, d, h = "0", mi = "0", s = "0"] = exifMatch;
-    const parsed = new Date(
-      `${y}-${mo}-${d}T${h}:${mi}:${s}`
-    );
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    return kstLocalPartsToUtcIso(exifMatch);
+  }
+
+  // "YYYY-MM-DDTHH:mm:ss" without Z/offset — 현지(KST) 시각
+  const naiveIso = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
+  );
+  if (naiveIso && !raw.endsWith("Z") && !/[+-]\d{2}:?\d{2}$/.test(raw)) {
+    return kstLocalPartsToUtcIso(naiveIso);
   }
 
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+/** 한국 현지 시각(타임존 없음) → UTC ISO */
+function kstLocalPartsToUtcIso(
+  m: RegExpMatchArray
+): string | undefined {
+  const [, y, mo, d, h = "0", mi = "0", s = "0"] = m;
+  const utcMs =
+    Date.UTC(+y, +mo - 1, +d, +h, +mi, +s) - KST_OFFSET_MS;
+  const parsed = new Date(utcMs);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 /** Pick the first valid date in priority order (preferred over earliest). */
@@ -60,49 +75,6 @@ const MIN_CAPTURE_MS = new Date("1980-01-01T00:00:00.000Z").getTime();
 /** 한국 표준시 (DST 없음) */
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-/**
- * UTC 기준 ISO( ffprobe·파일 시각 ) → EXIF와 같은 KST 벽시계 ISO
- * 예: 실제 10:26 KST가 01:26Z로 저장된 경우 → 10:26Z convention
- */
-export function toKstWallClockIso(iso: string): string {
-  const ms = new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return iso;
-  return new Date(ms + KST_OFFSET_MS).toISOString();
-}
-
-/** DateTimeOriginal 등 촬영 EXIF가 있는지 */
-export function hasCaptureExif(
-  exif?: Record<string, unknown> | null
-): boolean {
-  if (!exif || typeof exif !== "object") return false;
-  return Boolean(
-    exif.DateTimeOriginal ||
-    exif.DateTimeDigitized ||
-    exif.CreateDate ||
-    exif.SubSecDateTimeOriginal
-  );
-}
-
-/** EXIF 없는 사진·동영상: takenAt이 UTC(-9h)로 저장된 경우 보정 */
-export function needsKstTakenAtAdjust(doc: {
-  type?: string;
-  exif?: Record<string, unknown> | null;
-}): boolean {
-  if (doc.type === "video") return true;
-  if (doc.type === "image" && !hasCaptureExif(doc.exif)) return true;
-  return false;
-}
-
-function normalizeTakenAtIso(
-  iso: string,
-  doc: { type?: string; exif?: Record<string, unknown> | null }
-): string {
-  if (needsKstTakenAtAdjust(doc)) {
-    return toKstWallClockIso(iso);
-  }
-  return iso;
-}
-
 /** 촬영 시각으로 쓸 수 있는지 (빈 값·1970년대 등 제외) */
 export function isPlausibleCaptureDate(iso: string): boolean {
   const ms = new Date(iso).getTime();
@@ -123,9 +95,7 @@ export function computeSortAt(doc: {
 }): string {
   if (doc.takenAt) {
     const iso = parseMediaDate(doc.takenAt);
-    if (iso && isPlausibleCaptureDate(iso)) {
-      return normalizeTakenAtIso(iso, doc);
-    }
+    if (iso && isPlausibleCaptureDate(iso)) return iso;
   }
   if (doc.uploadedAt) {
     const iso = parseMediaDate(doc.uploadedAt);
