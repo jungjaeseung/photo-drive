@@ -3,9 +3,10 @@
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
 import type { GridMode } from "@/hooks/use-grid-mode";
+import { downloadMediaAsZip } from "@/lib/download-zip";
 import { removeMediaFromAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
-import { FolderMinus, Loader2, Share2, Upload } from "lucide-react";
+import { Download, FolderMinus, Loader2, Share2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface GridActionBarProps {
@@ -36,6 +37,8 @@ export function GridActionBar({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const hasSelection = selectedIds.size > 0;
@@ -66,6 +69,19 @@ export function GridActionBar({
       setUploadError(String(e));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDownloadZip() {
+    if (!hasSelection) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadMediaAsZip(Array.from(selectedIds));
+    } catch (e) {
+      setDownloadError(String(e));
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -149,6 +165,19 @@ export function GridActionBar({
 
         {mode === "select" && (
           <div className="flex flex-col gap-2">
+            <Button
+              size="icon"
+              className="shadow-lg"
+              disabled={!hasSelection || downloading}
+              onClick={handleDownloadZip}
+              title="원본 ZIP 다운로드"
+            >
+              {downloading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+            </Button>
             {albumId && (
               <Button
                 size="icon"
@@ -178,12 +207,12 @@ export function GridActionBar({
         )}
       </div>
 
-      {(uploadError || removeError) && (
+      {(uploadError || removeError || downloadError) && (
         <p
           className="fixed right-4 z-50 max-w-[220px] rounded bg-red-500/90 px-2 py-1 text-xs text-white"
           style={{ bottom: "calc(var(--fab-bottom) + 4.5rem)" }}
         >
-          {uploadError ?? removeError}
+          {uploadError ?? removeError ?? downloadError}
         </p>
       )}
 

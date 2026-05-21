@@ -6,6 +6,7 @@ import { ko } from "date-fns/locale";
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
+import { SelectionCheck } from "./selection-check";
 
 export interface MediaGridItem {
   id: string;
@@ -25,10 +26,13 @@ interface MediaGridProps {
   selectedIds?: Set<string>;
   onSelect?: (item: MediaGridItem) => void;
   onToggleSelect?: (id: string) => void;
+  onToggleGroup?: (ids: string[]) => void;
   onLongPress?: (item: MediaGridItem) => void;
 }
 
-function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridItem[] }[] {
+function groupByDate(
+  items: MediaGridItem[]
+): { label: string; itemIds: string[]; items: MediaGridItem[] }[] {
   const map = new Map<string, MediaGridItem[]>();
   for (const item of items) {
     const key = format(parseISO(item.takenAt || item.uploadedAt), "yyyy-MM-dd");
@@ -39,6 +43,7 @@ function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridI
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, groupItems]) => ({
       label: format(parseISO(date), "yyyy년 M월 d일", { locale: ko }),
+      itemIds: groupItems.map((i) => i.id),
       items: groupItems,
     }));
 }
@@ -50,6 +55,7 @@ export function MediaGrid({
   selectedIds,
   onSelect,
   onToggleSelect,
+  onToggleGroup,
   onLongPress,
 }: MediaGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -69,13 +75,17 @@ export function MediaGrid({
   }, []);
 
   type Row =
-    | { kind: "header"; label: string }
+    | { kind: "header"; label: string; itemIds: string[] }
     | { kind: "row"; items: MediaGridItem[] };
 
   const rows: Row[] = useMemo(() => {
     const result: Row[] = [];
     for (const section of sections) {
-      result.push({ kind: "header", label: section.label });
+      result.push({
+        kind: "header",
+        label: section.label,
+        itemIds: section.itemIds,
+      });
       for (let i = 0; i < section.items.length; i += columnCount) {
         result.push({
           kind: "row",
@@ -127,9 +137,28 @@ export function MediaGrid({
               }}
             >
               {row.kind === "header" ? (
-                <h2 className="bg-background px-3 py-2.5 text-sm font-semibold">
-                  {row.label}
-                </h2>
+                <div className="bg-background flex items-center justify-between gap-2 px-3 py-2.5">
+                  <h2 className="text-sm font-semibold">{row.label}</h2>
+                  {mode === "select" && (
+                    <button
+                      type="button"
+                      aria-label={`${row.label} 전체 선택`}
+                      onClick={() => onToggleGroup?.(row.itemIds)}
+                      className="p-0.5"
+                    >
+                      <SelectionCheck
+                        selected={
+                          row.itemIds.length > 0 &&
+                          row.itemIds.every((id) => selectedIds?.has(id))
+                        }
+                        partial={
+                          row.itemIds.some((id) => selectedIds?.has(id)) &&
+                          !row.itemIds.every((id) => selectedIds?.has(id))
+                        }
+                      />
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div
                   className="grid gap-0.5 px-0.5"

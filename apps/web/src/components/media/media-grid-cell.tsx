@@ -3,10 +3,10 @@
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { setMediaNavContext } from "@/lib/media-nav-context";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
 import { useRef } from "react";
 import type { MediaGridItem } from "./media-grid";
 import { ProgressiveImage } from "./progressive-image";
+import { SelectionCheck } from "./selection-check";
 
 const LONG_PRESS_MS = 500;
 const MOVE_THRESHOLD = 10;
@@ -119,15 +119,8 @@ export function MediaGridCell({
         </span>
       )}
       {mode === "select" && (
-        <span
-          className={cn(
-            "absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2",
-            selected
-              ? "border-blue-500 bg-blue-500 text-white"
-              : "border-white/80 bg-black/40"
-          )}
-        >
-          {selected && <Check className="h-3 w-3" />}
+        <span className="absolute right-1 top-1">
+          <SelectionCheck selected={selected} />
         </span>
       )}
     </button>

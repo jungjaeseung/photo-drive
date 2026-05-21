@@ -64,6 +64,7 @@ export default function LibraryPage() {
             selectedIds={gridMode.selectedIds}
             onSelect={(item) => viewer.select(item.id)}
             onToggleSelect={gridMode.toggleSelect}
+            onToggleGroup={gridMode.toggleGroup}
             onLongPress={handleLongPress}
           />
         )}

@@ -34,6 +34,7 @@ export interface AlbumDocument {
   description?: string;
   coverMediaId?: string;
   mediaCount: number;
+  sortOrder?: number;
   createdAt: string;
   updatedAt: string;
 }

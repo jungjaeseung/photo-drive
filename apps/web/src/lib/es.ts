@@ -168,12 +168,21 @@ export async function listAlbums(): Promise<AlbumDocument[]> {
     index: ES_INDEX_ALBUMS,
     body: {
       size: 200,
-      sort: [{ updatedAt: "desc" }],
+      sort: [
+        { sortOrder: { order: "asc", unmapped_type: "long" } },
+        { updatedAt: "desc" },
+      ],
     },
   });
-  return (result.body.hits.hits ?? []).map(
+  const albums = (result.body.hits.hits ?? []).map(
     (h: { _source: AlbumDocument }) => h._source
   );
+  return albums.sort((a: AlbumDocument, b: AlbumDocument) => {
+    const ao = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const bo = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) return ao - bo;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
 }
 
 export async function countMediaInAlbum(albumId: string): Promise<number> {

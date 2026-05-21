@@ -6,6 +6,8 @@ import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
 import { useMediaGridInteraction } from "@/hooks/use-media-grid-interaction";
 import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
+import { X } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -27,13 +29,22 @@ export default function AlbumDetailPage() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
-        <h1 className="text-xl font-bold">{albumName || "앨범"}</h1>
-        {gridMode.mode === "select" && gridMode.selectedCount > 0 && (
-          <p className="text-xs text-zinc-500">
-            {gridMode.selectedCount}개 선택
-          </p>
-        )}
+      <header className="flex items-center gap-2 border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
+        <Link
+          href="/collections"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          aria-label="모음으로 닫기"
+        >
+          <X className="h-5 w-5" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-bold">{albumName || "앨범"}</h1>
+          {gridMode.mode === "select" && gridMode.selectedCount > 0 && (
+            <p className="text-xs text-zinc-500">
+              {gridMode.selectedCount}개 선택
+            </p>
+          )}
+        </div>
       </header>
       <div className="flex-1 overflow-hidden">
         <MediaGrid
@@ -43,6 +54,7 @@ export default function AlbumDetailPage() {
           selectedIds={gridMode.selectedIds}
           onSelect={(item) => viewer.select(item.id)}
           onToggleSelect={gridMode.toggleSelect}
+          onToggleGroup={gridMode.toggleGroup}
           onLongPress={handleLongPress}
         />
       </div>

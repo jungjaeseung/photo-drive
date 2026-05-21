@@ -46,11 +46,26 @@ export function useGridMode() {
     setSelectedIds(new Set([id]));
   }, []);
 
+  const toggleGroup = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of ids) next.delete(id);
+      } else {
+        for (const id of ids) next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   return {
     mode,
     setMode,
     selectedIds,
     toggleSelect,
+    toggleGroup,
     selectOne,
     clearSelection,
     enterSelectMode,

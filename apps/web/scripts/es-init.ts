@@ -40,6 +40,7 @@ const albumMappings = {
     description: { type: "text" },
     coverMediaId: { type: "keyword" },
     mediaCount: { type: "integer" },
+    sortOrder: { type: "long" },
     createdAt: { type: "date" },
     updatedAt: { type: "date" },
   },

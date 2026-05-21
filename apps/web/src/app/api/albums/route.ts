@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     name,
     description: body.description,
     mediaCount: 0,
+    sortOrder: Date.now(),
     createdAt: now,
     updatedAt: now,
   };
