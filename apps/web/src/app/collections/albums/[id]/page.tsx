@@ -51,7 +51,9 @@ export default function AlbumDetailPage() {
         onModeChange={gridMode.setMode}
         selectedIds={gridMode.selectedIds}
         showUpload={false}
+        albumId={albumId}
         onAlbumAdded={refresh}
+        onRemovedFromAlbum={refresh}
       />
       <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>

@@ -3,8 +3,9 @@
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
 import type { GridMode } from "@/hooks/use-grid-mode";
+import { removeMediaFromAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
-import { Share2, Upload } from "lucide-react";
+import { FolderMinus, Loader2, Share2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface GridActionBarProps {
@@ -12,8 +13,11 @@ interface GridActionBarProps {
   onModeChange: (mode: GridMode) => void;
   selectedIds: Set<string>;
   showUpload?: boolean;
+  /** 앨범 상세 페이지: 선택 항목을 현재 앨범에서 제거 */
+  albumId?: string;
   onUploaded?: () => void;
   onAlbumAdded?: () => void;
+  onRemovedFromAlbum?: () => void;
 }
 
 export function GridActionBar({
@@ -21,15 +25,20 @@ export function GridActionBar({
   onModeChange,
   selectedIds,
   showUpload = true,
+  albumId,
   onUploaded,
   onAlbumAdded,
+  onRemovedFromAlbum,
 }: GridActionBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const hasSelection = selectedIds.size > 0;
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -57,6 +66,29 @@ export function GridActionBar({
       setUploadError(String(e));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleRemoveFromAlbum() {
+    if (!albumId || !hasSelection) return;
+    if (
+      !confirm(
+        `선택한 ${selectedIds.size}개 항목을 이 앨범에서 제거할까요?\n(파일은 보관함에 남습니다)`
+      )
+    ) {
+      return;
+    }
+
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      await removeMediaFromAlbums(albumId, Array.from(selectedIds));
+      onRemovedFromAlbum?.();
+      onModeChange("detail");
+    } catch (e) {
+      setRemoveError(String(e));
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -106,26 +138,49 @@ export function GridActionBar({
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
             >
-              <Upload className="h-5 w-5" />
+              {uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Upload className="h-5 w-5" />
+              )}
             </Button>
           </>
         )}
 
         {mode === "select" && (
-          <Button
-            size="icon"
-            className="shadow-lg"
-            disabled={selectedIds.size === 0}
-            onClick={() => setPickerOpen(true)}
-          >
-            <Share2 className="h-5 w-5" />
-          </Button>
+          <div className="flex flex-col gap-2">
+            {albumId && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="shadow-lg"
+                disabled={!hasSelection || removing}
+                onClick={handleRemoveFromAlbum}
+                title="앨범에서 제거"
+              >
+                {removing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <FolderMinus className="h-5 w-5" />
+                )}
+              </Button>
+            )}
+            <Button
+              size="icon"
+              className="shadow-lg"
+              disabled={!hasSelection}
+              onClick={() => setPickerOpen(true)}
+              title="앨범에 추가"
+            >
+              <Share2 className="h-5 w-5" />
+            </Button>
+          </div>
         )}
       </div>
 
-      {uploadError && (
-        <p className="fixed bottom-32 right-4 z-30 max-w-[200px] rounded bg-red-500/90 px-2 py-1 text-xs text-white">
-          {uploadError}
+      {(uploadError || removeError) && (
+        <p className="fixed bottom-36 right-4 z-30 max-w-[220px] rounded bg-red-500/90 px-2 py-1 text-xs text-white">
+          {uploadError ?? removeError}
         </p>
       )}
 
