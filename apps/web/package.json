@@ -9,7 +9,7 @@
     "lint": "eslint",
     "es:init": "pnpm --filter @photo-drive/shared build && tsx scripts/es-init.ts",
     "es:reindex": "pnpm --filter @photo-drive/shared build && tsx scripts/es-reindex-storage.ts",
-    "es:backfill-sort-at": "pnpm --filter @photo-drive/shared build && tsx scripts/es-backfill-sort-at.ts",
+    "es:backfill-sort-at": "tsx scripts/es-backfill-sort-at.ts",
     "icons:generate": "node scripts/generate-icons.mjs"
   },
   "dependencies": {

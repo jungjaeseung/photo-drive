@@ -3,14 +3,12 @@
  *
  *   export ELASTICSEARCH_URL=http://127.0.0.1:9200
  *   pnpm --filter @photo-drive/web es:backfill-sort-at
- * (shared 패키지 dist를 자동 빌드한 뒤 실행)
+ * (shared 소스를 직접 import — dist 빌드 불필요)
  */
 import { Client } from "@elastic/elasticsearch";
-import {
-  computeSortAt,
-  ES_INDEX_MEDIA,
-  type MediaDocument,
-} from "@photo-drive/shared";
+import { ES_INDEX_MEDIA } from "../../../packages/shared/src/constants.ts";
+import { computeSortAt } from "../../../packages/shared/src/media-date.ts";
+import type { MediaDocument } from "../../../packages/shared/src/types.ts";
 
 const url = process.env.ELASTICSEARCH_URL ?? "http://localhost:9200";
 const client = new Client({ node: url });

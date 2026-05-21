@@ -23,8 +23,10 @@
     "build": "tsc",
     "lint": "tsc --noEmit"
   },
+  "dependencies": {
+    "@types/node": "^20"
+  },
   "devDependencies": {
-    "@types/node": "^20",
     "typescript": "^5.7.3"
   }
 }
