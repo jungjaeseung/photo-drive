@@ -1,14 +1,17 @@
 "use client";
 
+import type { MediaGridItem } from "@/components/media/media-grid";
 import { Button } from "@/components/ui/button";
+import { buildProcessingGridItem } from "@/lib/upload-client";
 import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface UploadButtonProps {
   onUploaded?: () => void;
+  onItemUploaded?: (item: MediaGridItem) => void;
 }
 
-export function UploadButton({ onUploaded }: UploadButtonProps) {
+export function UploadButton({ onUploaded, onItemUploaded }: UploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,10 @@ export function UploadButton({ onUploaded }: UploadButtonProps) {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? "upload failed");
+        }
+        const data = await res.json();
+        if (data.mediaId) {
+          onItemUploaded?.(buildProcessingGridItem(file, data.mediaId));
         }
       }
       onUploaded?.();

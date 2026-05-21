@@ -2,7 +2,9 @@
 
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
+import type { MediaGridItem } from "@/components/media/media-grid";
 import type { GridMode } from "@/hooks/use-grid-mode";
+import { buildProcessingGridItem } from "@/lib/upload-client";
 import {
   downloadMediaAsZip,
   formatBytes,
@@ -21,6 +23,8 @@ interface GridActionBarProps {
   /** 앨범 상세 페이지: 선택 항목을 현재 앨범에서 제거 */
   albumId?: string;
   onUploaded?: () => void;
+  /** 파일별 업로드 직후 그리드에 처리 중 항목 표시 */
+  onItemUploaded?: (item: MediaGridItem) => void;
   onAlbumAdded?: () => void;
   onRemovedFromAlbum?: () => void;
 }
@@ -32,6 +36,7 @@ export function GridActionBar({
   showUpload = true,
   albumId,
   onUploaded,
+  onItemUploaded,
   onAlbumAdded,
   onRemovedFromAlbum,
 }: GridActionBarProps) {
@@ -68,6 +73,10 @@ export function GridActionBar({
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? "upload failed");
+        }
+        const data = await res.json();
+        if (data.mediaId) {
+          onItemUploaded?.(buildProcessingGridItem(file, data.mediaId));
         }
       }
       onUploaded?.();

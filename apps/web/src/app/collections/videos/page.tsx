@@ -8,7 +8,9 @@ import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
 export default function VideosOnlyPage() {
-  const { items, refresh } = useMediaList({ type: "video" });
+  const { items, refresh, prependProcessingItem } = useMediaList({
+    type: "video",
+  });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
 
@@ -39,6 +41,9 @@ export default function VideosOnlyPage() {
         onModeChange={gridMode.setMode}
         selectedIds={gridMode.selectedIds}
         showUpload
+        onItemUploaded={(item) => {
+          if (item.type === "video") prependProcessingItem(item);
+        }}
         onUploaded={refresh}
         onAlbumAdded={refresh}
       />

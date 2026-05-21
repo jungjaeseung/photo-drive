@@ -59,6 +59,13 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     fetchPage(undefined, false);
   }, [fetchPage]);
 
+  const prependProcessingItem = useCallback((item: MediaGridItem) => {
+    setItems((prev) => {
+      if (prev.some((i) => i.id === item.id)) return prev;
+      return [item, ...prev];
+    });
+  }, []);
+
   const hasProcessing = items.some((item) => item.status === "processing");
 
   useEffect(() => {
@@ -69,5 +76,5 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     return () => clearInterval(interval);
   }, [hasProcessing, fetchPage]);
 
-  return { items, loading, hasMore, loadMore, refresh };
+  return { items, loading, hasMore, loadMore, refresh, prependProcessingItem };
 }

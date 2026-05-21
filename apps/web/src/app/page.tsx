@@ -15,7 +15,8 @@ function getColumnCount(width: number) {
 }
 
 export default function LibraryPage() {
-  const { items, loading, hasMore, loadMore, refresh } = useMediaList();
+  const { items, loading, hasMore, loadMore, refresh, prependProcessingItem } =
+    useMediaList();
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -81,6 +82,7 @@ export default function LibraryPage() {
         onModeChange={gridMode.setMode}
         selectedIds={gridMode.selectedIds}
         showUpload
+        onItemUploaded={prependProcessingItem}
         onUploaded={refresh}
         onAlbumAdded={refresh}
       />

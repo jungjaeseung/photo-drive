@@ -8,7 +8,9 @@ import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
 export default function PhotosOnlyPage() {
-  const { items, refresh } = useMediaList({ type: "image" });
+  const { items, refresh, prependProcessingItem } = useMediaList({
+    type: "image",
+  });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
 
@@ -39,6 +41,9 @@ export default function PhotosOnlyPage() {
         onModeChange={gridMode.setMode}
         selectedIds={gridMode.selectedIds}
         showUpload
+        onItemUploaded={(item) => {
+          if (item.type === "image") prependProcessingItem(item);
+        }}
         onUploaded={refresh}
         onAlbumAdded={refresh}
       />
