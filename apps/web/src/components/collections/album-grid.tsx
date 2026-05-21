@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
+import { CachedImage } from "@/components/media/cached-image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -54,8 +55,7 @@ function AlbumCardContent({
     <>
       <div className="relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
         {album.coverThumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <CachedImage
             src={album.coverThumbnailUrl}
             alt=""
             draggable={false}

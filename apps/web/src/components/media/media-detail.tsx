@@ -12,7 +12,9 @@ import {
   Download,
   FolderPlus,
 } from "lucide-react";
+import { CachedImage } from "@/components/media/cached-image";
 import { isOriginalUrlCached } from "@/lib/media-prefetch";
+import { prefetchMediaImages } from "@/lib/media-image-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface MediaDetailData {
@@ -132,6 +134,15 @@ export function MediaDetail({
     thumb?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   }, [currentIndex, media.id]);
 
+  useEffect(() => {
+    if (!open || navItems.length === 0) return;
+    const neighbors = [
+      navItems[currentIndex - 1]?.thumbnailUrl,
+      navItems[currentIndex + 1]?.thumbnailUrl,
+    ];
+    prefetchMediaImages(neighbors);
+  }, [open, navItems, currentIndex]);
+
   const stripWindow = 5;
   const stripStart = Math.max(0, currentIndex - stripWindow);
   const stripEnd = Math.min(navItems.length, currentIndex + stripWindow + 1);
@@ -218,8 +229,7 @@ export function MediaDetail({
                   )}
                 >
                   {item.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <CachedImage
                       src={item.thumbnailUrl}
                       alt=""
                       className="h-full w-full object-cover"

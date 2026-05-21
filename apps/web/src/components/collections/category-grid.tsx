@@ -1,5 +1,6 @@
 "use client";
 
+import { CachedImage } from "@/components/media/cached-image";
 import { Film, Image } from "lucide-react";
 import Link from "next/link";
 
@@ -43,8 +44,7 @@ export function CategoryGrid({
             className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900"
           >
             {thumb ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <CachedImage
                 src={thumb}
                 alt=""
                 className="h-full w-full object-cover transition-transform group-hover:scale-105"

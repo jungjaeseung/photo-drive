@@ -1,7 +1,9 @@
 "use client";
 
+import { CachedImage } from "@/components/media/cached-image";
+import { hasCachedMediaImage } from "@/lib/media-image-cache";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface ProgressiveImageProps {
   thumbSrc?: string;
@@ -18,8 +20,12 @@ export function ProgressiveImage({
   className,
   onClick,
 }: ProgressiveImageProps) {
-  const [loaded, setLoaded] = useState(false);
   const src = mainSrc ?? thumbSrc;
+  const [loaded, setLoaded] = useState(() => hasCachedMediaImage(src));
+
+  useEffect(() => {
+    setLoaded(hasCachedMediaImage(src));
+  }, [src]);
 
   if (!src) {
     return (
@@ -32,29 +38,21 @@ export function ProgressiveImage({
 
   return (
     <div className={cn("relative overflow-hidden", className)} onClick={onClick}>
-      {thumbSrc && thumbSrc !== mainSrc && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+      {thumbSrc && thumbSrc !== mainSrc && !loaded && (
+        <CachedImage
           src={thumbSrc}
           alt=""
-          aria-hidden
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover blur-md scale-105 transition-opacity",
-            loaded ? "opacity-0" : "opacity-100"
-          )}
+          className="absolute inset-0 h-full w-full scale-105 object-cover blur-md"
         />
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <CachedImage
         src={src}
         alt={alt}
-        loading="lazy"
-        decoding="async"
-        onLoad={() => setLoaded(true)}
         className={cn(
           "h-full w-full object-cover transition-opacity duration-300",
           loaded ? "opacity-100" : "opacity-0"
         )}
+        onLoad={() => setLoaded(true)}
       />
     </div>
   );
