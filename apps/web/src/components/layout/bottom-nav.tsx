@@ -19,7 +19,7 @@ export function BottomNav() {
         {tabs.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/"
-              ? pathname === "/" || pathname.startsWith("/media/")
+              ? pathname === "/" || pathname.startsWith("/p/")
               : pathname.startsWith(href);
           return (
             <Link

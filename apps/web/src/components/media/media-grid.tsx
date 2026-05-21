@@ -4,7 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressiveImage } from "./progressive-image";
 
 export interface MediaGridItem {
@@ -41,7 +41,20 @@ function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridI
 export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
   const router = useRouter();
   const parentRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const sections = useMemo(() => groupByDate(items), [items]);
+
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setContainerWidth(width);
+    });
+    observer.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => observer.disconnect();
+  }, []);
 
   type Row =
     | { kind: "header"; label: string }
@@ -61,11 +74,19 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
     return result;
   }, [sections, columnCount]);
 
+  const rowHeight = useMemo(() => {
+    if (containerWidth <= 0) return 120;
+    const gap = 2;
+    const cellWidth = (containerWidth - gap * (columnCount - 1)) / columnCount;
+    return cellWidth + gap;
+  }, [containerWidth, columnCount]);
+
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => (rows[index].kind === "header" ? 40 : 100),
-    overscan: 5,
+    estimateSize: (index) =>
+      rows[index].kind === "header" ? 44 : rowHeight,
+    overscan: 4,
   });
 
   return (
@@ -78,6 +99,8 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
           return (
             <div
               key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
               style={{
                 position: "absolute",
                 top: 0,
@@ -87,7 +110,7 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
               }}
             >
               {row.kind === "header" ? (
-                <h2 className="sticky top-0 z-10 bg-white/90 px-3 py-2 text-sm font-semibold backdrop-blur dark:bg-zinc-950/90">
+                <h2 className="bg-background px-3 py-2.5 text-sm font-semibold">
                   {row.label}
                 </h2>
               ) : (
@@ -102,7 +125,7 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
                       key={item.id}
                       type="button"
                       className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900"
-                      onClick={() => router.push(`/media/${item.id}`)}
+                      onClick={() => router.push(`/p/${item.id}`)}
                     >
                       <ProgressiveImage
                         thumbSrc={item.thumbnailUrl}

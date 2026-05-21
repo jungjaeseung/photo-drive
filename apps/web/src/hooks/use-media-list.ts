@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaGridItem } from "@/components/media/media-grid";
 
 interface UseMediaListOptions {
@@ -13,14 +13,17 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const fetchPage = useCallback(
     async (nextCursor?: string, append = false) => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (options.type) params.set("type", options.type);
-        if (options.albumId) params.set("albumId", options.albumId);
+        const opts = optionsRef.current;
+        if (opts.type) params.set("type", opts.type);
+        if (opts.albumId) params.set("albumId", opts.albumId);
         if (nextCursor) params.set("cursor", nextCursor);
         params.set("size", "60");
 
@@ -37,7 +40,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         setLoading(false);
       }
     },
-    [options.type, options.albumId]
+    []
   );
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     setCursor(undefined);
     setHasMore(true);
     fetchPage(undefined, false);
-  }, [fetchPage]);
+  }, [options.type, options.albumId, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || loading || !cursor) return;
@@ -55,6 +58,16 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   const refresh = useCallback(() => {
     fetchPage(undefined, false);
   }, [fetchPage]);
+
+  const hasProcessing = items.some((item) => item.status === "processing");
+
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const interval = setInterval(() => {
+      fetchPage(undefined, false);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [hasProcessing, fetchPage]);
 
   return { items, loading, hasMore, loadMore, refresh };
 }
