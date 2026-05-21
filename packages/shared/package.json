@@ -11,6 +11,12 @@
       "development": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./media-date": {
+      "types": "./dist/media-date.d.ts",
+      "development": "./src/media-date.ts",
+      "import": "./dist/media-date.js",
+      "default": "./dist/media-date.js"
     }
   },
   "scripts": {
