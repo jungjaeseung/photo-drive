@@ -3,7 +3,11 @@
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
 import type { GridMode } from "@/hooks/use-grid-mode";
-import { downloadMediaAsZip } from "@/lib/download-zip";
+import {
+  downloadMediaAsZip,
+  formatBytes,
+  type DownloadProgress,
+} from "@/lib/download-zip";
 import { removeMediaFromAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
 import { Download, FolderMinus, Loader2, Share2, Upload } from "lucide-react";
@@ -37,8 +41,10 @@ export function GridActionBar({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] =
+    useState<DownloadProgress | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const downloading = downloadProgress !== null;
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const hasSelection = selectedIds.size > 0;
@@ -74,15 +80,27 @@ export function GridActionBar({
 
   async function handleDownloadZip() {
     if (!hasSelection) return;
-    setDownloading(true);
     setDownloadError(null);
+    setDownloadProgress({
+      phase: "compressing",
+      loaded: 0,
+      total: null,
+      percent: null,
+    });
     try {
-      await downloadMediaAsZip(Array.from(selectedIds));
+      await downloadMediaAsZip(Array.from(selectedIds), setDownloadProgress);
     } catch (e) {
       setDownloadError(String(e));
     } finally {
-      setDownloading(false);
+      setDownloadProgress(null);
     }
+  }
+
+  function downloadProgressLabel(): string {
+    if (!downloadProgress) return "";
+    if (downloadProgress.phase === "compressing") return "압축 중…";
+    if (downloadProgress.percent != null) return `${downloadProgress.percent}%`;
+    return formatBytes(downloadProgress.loaded);
   }
 
   async function handleRemoveFromAlbum() {
@@ -166,14 +184,33 @@ export function GridActionBar({
         {mode === "select" && (
           <div className="flex flex-col gap-2">
             <Button
-              size="icon"
-              className="shadow-lg"
+              size={downloading ? "default" : "icon"}
+              className={cn(
+                "shadow-lg",
+                downloading &&
+                  "h-10 min-w-[7.5rem] w-auto gap-2 px-3 transition-[width]"
+              )}
               disabled={!hasSelection || downloading}
               onClick={handleDownloadZip}
               title="원본 ZIP 다운로드"
             >
-              {downloading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+              {downloading && downloadProgress ? (
+                <>
+                  <div className="h-1.5 min-w-[3.5rem] flex-1 overflow-hidden rounded-full bg-white/30">
+                    {downloadProgress.phase === "compressing" ||
+                    downloadProgress.percent == null ? (
+                      <div className="h-full w-full animate-pulse rounded-full bg-white/70" />
+                    ) : (
+                      <div
+                        className="h-full rounded-full bg-white transition-[width] duration-150"
+                        style={{ width: `${downloadProgress.percent}%` }}
+                      />
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs tabular-nums">
+                    {downloadProgressLabel()}
+                  </span>
+                </>
               ) : (
                 <Download className="h-5 w-5" />
               )}

@@ -1,11 +1,21 @@
 import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, stat } from "node:fs/promises";
 import { PassThrough } from "node:stream";
 import path from "node:path";
 import type Archiver from "archiver";
 
+export interface ZipEntry {
+  zipName: string;
+  fullPath: string;
+  size: number;
+}
+
+export function sumZipEntryBytes(entries: ZipEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.size, 0);
+}
+
 export async function buildZipStream(
-  entries: { zipName: string; fullPath: string }[]
+  entries: Pick<ZipEntry, "zipName" | "fullPath">[]
 ): Promise<PassThrough> {
   const archiver = (await import("archiver")).default;
   const archive: Archiver.Archiver = archiver("zip", { zlib: { level: 5 } });
@@ -30,8 +40,8 @@ export async function collectZipEntries(
     status: string;
     filename: string;
   } | null>
-): Promise<{ zipName: string; fullPath: string }[]> {
-  const entries: { zipName: string; fullPath: string }[] = [];
+): Promise<ZipEntry[]> {
+  const entries: ZipEntry[] = [];
 
   for (const id of mediaIds) {
     const doc = await getMedia(id);
@@ -40,14 +50,15 @@ export async function collectZipEntries(
     const fullPath = path.join(storageRoot, doc.originalPath);
     try {
       await access(fullPath);
+      const { size } = await stat(fullPath);
+      entries.push({
+        zipName: `${id.slice(0, 8)}_${doc.filename}`,
+        fullPath,
+        size,
+      });
     } catch {
       continue;
     }
-
-    entries.push({
-      zipName: `${id.slice(0, 8)}_${doc.filename}`,
-      fullPath,
-    });
   }
 
   return entries;

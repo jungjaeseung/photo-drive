@@ -1,6 +1,10 @@
 import { getMediaById } from "@/lib/es";
 import { getStorageRoot } from "@/lib/config";
-import { buildZipStream, collectZipEntries } from "@/lib/zip-archive";
+import {
+  buildZipStream,
+  collectZipEntries,
+  sumZipEntryBytes,
+} from "@/lib/zip-archive";
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,6 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sourceBytes = sumZipEntryBytes(entries);
     const passThrough = await buildZipStream(entries);
     const webStream = Readable.toWeb(passThrough) as ReadableStream;
     const date = new Date().toISOString().slice(0, 10);
@@ -50,6 +55,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": `attachment; filename="photo-drive-${date}.zip"`,
+        "X-Source-Bytes": String(sourceBytes),
       },
     });
   } catch (error) {
