@@ -37,7 +37,25 @@ pnpm docker:start
 pnpm es:init   # 컨테이너 내 또는 호스트에서 ES 인덱스 생성
 ```
 
-접속: `https://3harang.ddns.net/photos` (home-server nginx에 `docker/nginx/home-server-snippet.conf` 참고)
+접속: `https://3harang.ddns.net/photos`
+
+**nginx:** `home-server/nginx/nginx-ssl.conf`와 `nginx.conf` 둘 다에 `/photos` 라우트 필요 (SSL 사용 시 **ssl 파일 필수**). 스니펫: `docker/nginx/home-server-snippet.conf`
+
+### 502 Bad Gateway 시
+
+```bash
+# 1) photo-drive 컨테이너 상태
+docker ps -a | grep photo-drive
+docker logs photo-drive-app --tail 50
+
+# 2) home-network 연결
+docker network inspect home-network --format '{{range .Containers}}{{.Name}} {{end}}'
+# photo-drive-app, home-server-nginx 포함 확인
+
+# 3) nginx 설정 반영 후 재시작
+cd ~/source/home-server && docker compose restart nginx
+docker exec home-server-nginx nginx -t
+```
 
 ## GitHub Actions 배포 (main push)
 
