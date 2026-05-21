@@ -105,7 +105,10 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       "fast",
       "-crf",
       "28",
-      "-an",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "96k",
       previewPath,
     ]);
 

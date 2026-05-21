@@ -61,12 +61,25 @@ export function MediaDetail({
 }: MediaDetailProps) {
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [originalLoading, setOriginalLoading] = useState(false);
+  const [playOriginalVideo, setPlayOriginalVideo] = useState(false);
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
   const previewSrc = media.previewUrl ?? media.thumbnailUrl;
   const isImage = media.type === "image";
+  const hasVideoPreview = !!media.videoPreviewUrl;
+  const canSwitchToOriginal =
+    !!media.originalUrl &&
+    hasVideoPreview &&
+    media.originalUrl !== media.videoPreviewUrl;
+  const videoSrc = playOriginalVideo
+    ? (media.originalUrl ?? media.videoPreviewUrl)
+    : (media.videoPreviewUrl ?? media.originalUrl);
+
+  useEffect(() => {
+    setPlayOriginalVideo(false);
+  }, [media.id]);
 
   useEffect(() => {
     setOriginalLoaded(false);
@@ -94,7 +107,10 @@ export function MediaDetail({
       : previewSrc;
 
   const handleSave = useCallback(() => {
-    const url = media.originalUrl ?? media.previewUrl;
+    const url =
+      media.type === "video"
+        ? (media.originalUrl ?? media.videoPreviewUrl)
+        : (media.originalUrl ?? media.previewUrl);
     if (!url) return;
     const a = document.createElement("a");
     a.href = url;
@@ -185,19 +201,25 @@ export function MediaDetail({
           )}
 
           {media.type === "video" ? (
-            <video
-              key={media.id}
-              src={media.originalUrl ?? media.videoPreviewUrl}
-              poster={media.posterUrl ?? media.thumbnailUrl}
-              controls
-              playsInline
-              preload={
-                isOriginalUrlCached(media.originalUrl)
-                  ? "auto"
-                  : "metadata"
-              }
-              className="max-h-[55vh] max-w-full lg:max-h-[60vh]"
-            />
+            <div className="flex w-full max-w-full flex-col items-center gap-2">
+              {canSwitchToOriginal && !playOriginalVideo && (
+                <p className="text-xs text-zinc-400">
+                  미리보기 재생 중 · 원본은 용량이 클 수 있습니다
+                </p>
+              )}
+              {playOriginalVideo && (
+                <p className="text-xs text-amber-400/90">원본 재생 중</p>
+              )}
+              <video
+                key={`${media.id}-${playOriginalVideo ? "orig" : "preview"}`}
+                src={videoSrc}
+                poster={media.posterUrl ?? media.thumbnailUrl}
+                controls
+                playsInline
+                preload="none"
+                className="max-h-[55vh] max-w-full lg:max-h-[60vh]"
+              />
+            </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -268,7 +290,16 @@ export function MediaDetail({
                 앨범 추가
               </Button>
             )}
-            {(media.originalUrl || media.previewUrl) && (
+            {canSwitchToOriginal && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPlayOriginalVideo((v) => !v)}
+              >
+                {playOriginalVideo ? "미리보기" : "원본 재생"}
+              </Button>
+            )}
+            {(media.originalUrl || media.previewUrl || media.videoPreviewUrl) && (
               <Button size="sm" variant="secondary" onClick={handleSave}>
                 <Download className="h-4 w-4" />
                 저장

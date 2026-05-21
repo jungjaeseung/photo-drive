@@ -28,13 +28,14 @@ function preloadVideo(url: string): void {
 }
 
 async function preloadOriginalAsset(data: MediaDetailData): Promise<void> {
-  const url = data.originalUrl ?? data.previewUrl;
-  if (!url) return;
-
   if (data.type === "image") {
-    await preloadImage(url);
-  } else if (data.originalUrl) {
-    preloadVideo(data.originalUrl);
+    const url = data.originalUrl ?? data.previewUrl;
+    if (url) await preloadImage(url);
+    return;
+  }
+
+  if (data.type === "video" && data.videoPreviewUrl) {
+    preloadVideo(data.videoPreviewUrl);
   }
 }
 
