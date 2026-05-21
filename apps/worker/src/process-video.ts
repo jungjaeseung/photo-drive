@@ -4,6 +4,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   getMediaDir,
+  computeSortAt,
   getRelativeMediaPath,
   VIDEO_PREVIEW_SECONDS,
 } from "@photo-drive/shared";
@@ -125,6 +126,11 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       codec,
       resolution,
       takenAt,
+      sortAt: computeSortAt({
+        takenAt,
+        uploadedAt: doc.uploadedAt,
+        createdAt: doc.createdAt,
+      }),
     };
 
     await writeFile(

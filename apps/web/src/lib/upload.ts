@@ -6,6 +6,7 @@ import {
   getRelativeMediaPath,
   IMAGE_MIME_PREFIX,
   VIDEO_MIME_PREFIX,
+  computeSortAt,
   takenAtFromFileLastModified,
   type MediaDocument,
   type MediaType,
@@ -62,6 +63,11 @@ export function buildInitialMediaDoc(params: {
     params.fileLastModified ?? 0,
     params.uploadedAt
   );
+  const sortAt = computeSortAt({
+    takenAt,
+    uploadedAt: now,
+    createdAt: now,
+  });
   return {
     id: params.id,
     type: params.type,
@@ -74,6 +80,7 @@ export function buildInitialMediaDoc(params: {
     sha256: params.sha256,
     createdAt: now,
     takenAt,
+    sortAt,
     uploadedAt: now,
     albumIds: [],
     favorite: false,

@@ -65,10 +65,10 @@ export function isPlausibleCaptureDate(iso: string): boolean {
 }
 
 /**
- * 그리드/앨범 정렬용 시각: takenAt → uploadedAt → createdAt
- * (EXIF 없음·동영상 메타 실패·잘못된 takenAt 대비)
+ * 그리드·ES 정렬용 통합 시각: plausible takenAt → uploadedAt → createdAt
+ * (EXIF 없음·동영상 메타 실패·잘못된 takenAt·ES takenAt/_last 이중 정렬 방지)
  */
-export function getEffectiveSortIso(doc: {
+export function computeSortAt(doc: {
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
@@ -88,7 +88,22 @@ export function getEffectiveSortIso(doc: {
   return new Date(0).toISOString();
 }
 
+/** 저장된 sortAt 우선, 없으면 computeSortAt (기존 문서 호환) */
+export function getEffectiveSortIso(doc: {
+  sortAt?: string | null;
+  takenAt?: string | null;
+  uploadedAt?: string | null;
+  createdAt?: string | null;
+}): string {
+  if (doc.sortAt) {
+    const iso = parseMediaDate(doc.sortAt);
+    if (iso) return iso;
+  }
+  return computeSortAt(doc);
+}
+
 export function getEffectiveSortMillis(doc: {
+  sortAt?: string | null;
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;

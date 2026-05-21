@@ -90,8 +90,7 @@ export async function searchMedia(params: {
   }
 
   const sort = [
-    { takenAt: { order: "desc", unmapped_type: "date", missing: "_last" } },
-    { uploadedAt: { order: "desc", unmapped_type: "date" } },
+    { sortAt: { order: "desc", unmapped_type: "date", missing: "_last" } },
     { id: { order: "desc", unmapped_type: "keyword" } },
   ];
   const searchBody: Record<string, unknown> = {
@@ -102,8 +101,8 @@ export async function searchMedia(params: {
 
   if (params.cursor) {
     const parts = params.cursor.split("|");
-    if (parts.length >= 3) {
-      searchBody.search_after = [parts[0], parts[1], parts[2]];
+    if (parts.length >= 2) {
+      searchBody.search_after = [parts[0], parts[1]];
     }
   }
 
@@ -121,8 +120,8 @@ export async function searchMedia(params: {
   const items = hits.slice(0, size).map((h) => h._source);
   const last = hits[Math.min(size - 1, hits.length - 1)];
   const nextCursor =
-    hasMore && last?.sort && last.sort.length >= 3
-      ? `${last.sort[0]}|${last.sort[1]}|${last.sort[2]}`
+    hasMore && last?.sort && last.sort.length >= 2
+      ? `${last.sort[0]}|${last.sort[1]}`
       : undefined;
 
   return { items, nextCursor, hasMore };

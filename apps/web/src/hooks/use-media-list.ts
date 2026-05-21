@@ -20,6 +20,62 @@ function mergeWithOptimisticProcessing(
   return sortMediaItems(Array.from(byId.values()));
 }
 
+function patchItems(
+  prev: MediaGridItem[],
+  patches: MediaGridItem[]
+): MediaGridItem[] {
+  if (patches.length === 0) return prev;
+  const byId = new Map(patches.map((p) => [p.id, p]));
+  let changed = false;
+  const next = prev.map((item) => {
+    const patch = byId.get(item.id);
+    if (!patch) return item;
+    if (
+      patch.status !== item.status ||
+      patch.thumbnailUrl !== item.thumbnailUrl
+    ) {
+      changed = true;
+      return patch;
+    }
+    return item;
+  });
+  return changed ? sortMediaItems(next) : prev;
+}
+
+function processingIdsToResolve(
+  prev: MediaGridItem[],
+  apiItems: MediaGridItem[]
+): string[] {
+  const apiById = new Map(apiItems.map((i) => [i.id, i]));
+  return [
+    ...new Set(
+      prev
+        .filter((i) => i.status === "processing")
+        .filter((i) => {
+          const fromApi = apiById.get(i.id);
+          return !fromApi || fromApi.status === "processing";
+        })
+        .map((i) => i.id)
+    ),
+  ];
+}
+
+async function fetchMediaByIds(ids: string[]): Promise<MediaGridItem[]> {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const res = await fetch(`${base}/api/media/${id}`);
+        if (!res.ok) return null;
+        return (await res.json()) as MediaGridItem;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.filter((item): item is MediaGridItem => item != null);
+}
+
 interface UseMediaListOptions {
   type?: "image" | "video";
   albumId?: string;
@@ -32,14 +88,16 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   const [loading, setLoading] = useState(false);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const fetchPage = useCallback(
     async (
       nextCursor?: string,
       append = false,
-      options?: { silent?: boolean }
+      fetchOptions?: { silent?: boolean }
     ) => {
-      if (!options?.silent) setLoading(true);
+      if (!fetchOptions?.silent) setLoading(true);
       try {
         const params = new URLSearchParams();
         const opts = optionsRef.current;
@@ -53,17 +111,30 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         const data = await res.json();
 
         const apiItems = (data.items ?? []) as MediaGridItem[];
-        setItems((prev) =>
-          sortMediaItems(
-            append
-              ? [...prev, ...apiItems]
-              : mergeWithOptimisticProcessing(prev, apiItems)
-          )
-        );
+        const prev = itemsRef.current;
+
+        let resolved: MediaGridItem[] = [];
+        if (!append) {
+          const ids = processingIdsToResolve(prev, apiItems);
+          if (ids.length > 0) {
+            resolved = await fetchMediaByIds(ids);
+          }
+        }
+
+        setItems((current) => {
+          if (append) {
+            return sortMediaItems([...current, ...apiItems]);
+          }
+          if (fetchOptions?.silent) {
+            return patchItems(current, [...apiItems, ...resolved]);
+          }
+          const merged = mergeWithOptimisticProcessing(current, apiItems);
+          return patchItems(merged, resolved);
+        });
         setCursor(data.nextCursor);
         setHasMore(data.hasMore ?? false);
       } finally {
-        if (!options?.silent) setLoading(false);
+        if (!fetchOptions?.silent) setLoading(false);
       }
     },
     []

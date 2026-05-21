@@ -9,6 +9,7 @@
     "lint": "eslint",
     "es:init": "tsx scripts/es-init.ts",
     "es:reindex": "tsx scripts/es-reindex-storage.ts",
+    "es:backfill-sort-at": "tsx scripts/es-backfill-sort-at.ts",
     "icons:generate": "node scripts/generate-icons.mjs"
   },
   "dependencies": {

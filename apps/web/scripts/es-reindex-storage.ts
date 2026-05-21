@@ -10,6 +10,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "@elastic/elasticsearch";
 import {
+  computeSortAt,
   ES_INDEX_MEDIA,
   type MediaDocument,
 } from "@photo-drive/shared";
@@ -58,6 +59,9 @@ async function main() {
       if (!doc.id || doc.deletedAt) {
         skipped++;
         continue;
+      }
+      if (!doc.sortAt) {
+        doc.sortAt = computeSortAt(doc);
       }
       await client.index({
         index: ES_INDEX_MEDIA,

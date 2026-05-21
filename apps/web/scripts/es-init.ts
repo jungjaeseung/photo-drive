@@ -22,6 +22,7 @@ const mediaMappings = {
     sha256: { type: "keyword" },
     createdAt: { type: "date" },
     takenAt: { type: "date" },
+    sortAt: { type: "date" },
     uploadedAt: { type: "date" },
     albumIds: { type: "keyword" },
     favorite: { type: "boolean" },

@@ -5,6 +5,7 @@ import {
   getRelativeMediaPath,
   MEDIUM_MAX_SIZE,
   THUMB_MAX_SIZE,
+  computeSortAt,
   type MediaDocument,
 } from "@photo-drive/shared";
 import exifr from "exifr";
@@ -70,6 +71,11 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
       width: metadata.width,
       height: metadata.height,
       takenAt,
+      sortAt: computeSortAt({
+        takenAt,
+        uploadedAt: doc.uploadedAt,
+        createdAt: doc.createdAt,
+      }),
       exif: exif ? exif : undefined,
     };
 

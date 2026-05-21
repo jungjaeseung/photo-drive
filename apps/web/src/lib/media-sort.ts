@@ -1,10 +1,11 @@
 import type { MediaGridItem } from "@/components/media/media-grid";
 import {
+  computeSortAt,
   getEffectiveSortIso,
   getEffectiveSortMillis,
 } from "@photo-drive/shared/media-date";
 
-export { getEffectiveSortIso, getEffectiveSortMillis };
+export { computeSortAt, getEffectiveSortIso, getEffectiveSortMillis };
 
 /** 촬영·업로드 시각 통합 기준 최신순 */
 export function sortMediaItems<T extends MediaGridItem>(items: T[]): T[] {
