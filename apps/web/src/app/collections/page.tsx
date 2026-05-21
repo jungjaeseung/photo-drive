@@ -3,6 +3,7 @@
 import { AlbumGrid, type AlbumGridItem } from "@/components/collections/album-grid";
 import { CategoryGrid } from "@/components/collections/category-grid";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 export default function CollectionsPage() {
@@ -11,6 +12,7 @@ export default function CollectionsPage() {
   const [photoThumb, setPhotoThumb] = useState<string | undefined>();
   const [videoThumb, setVideoThumb] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -50,14 +52,20 @@ export default function CollectionsPage() {
   }, [loadAlbums]);
 
   async function createAlbum() {
-    if (!name.trim()) return;
-    await fetch(`${base}/api/albums`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    setName("");
-    loadAlbums();
+    if (!name.trim() || creating) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`${base}/api/albums`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!res.ok) throw new Error("앨범 생성 실패");
+      setName("");
+      await loadAlbums();
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -75,11 +83,19 @@ export default function CollectionsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="새 앨범 이름"
-            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            onKeyDown={(e) => e.key === "Enter" && createAlbum()}
+            disabled={creating}
+            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
+            onKeyDown={(e) => e.key === "Enter" && !creating && createAlbum()}
           />
-          <Button onClick={createAlbum} disabled={!name.trim()}>
-            만들기
+          <Button
+            onClick={createAlbum}
+            disabled={!name.trim() || creating}
+          >
+            {creating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "만들기"
+            )}
           </Button>
         </div>
         {loading ? (
