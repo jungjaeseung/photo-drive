@@ -118,7 +118,7 @@ export function MediaGrid({
   });
 
   const scrollAnchorIdRef = useRef<string | null>(null);
-  const prevFirstItemIdRef = useRef<string | undefined>();
+  const prevFirstItemIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const visible = virtualizer.getVirtualItems();
