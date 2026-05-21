@@ -1,0 +1,70 @@
+# Photo Drive - home-server nginx 연동
+# 사전조건:
+#   docker network create home-network
+#   js-wallet ES: pnpm docker:start:infra (js-es 컨테이너)
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: photo-drive-redis
+    volumes:
+      - photo-drive-redis:/data
+    networks:
+      - home-network
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_BASE_PATH: /photos
+    container_name: photo-drive-app
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BASE_PATH=/photos
+      - ELASTICSEARCH_URL=http://js-es:9200
+      - REDIS_URL=redis://photo-drive-redis:6379
+      - STORAGE_ROOT=/storage
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/storage
+    depends_on:
+      - redis
+    networks:
+      - home-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: photo-drive-worker
+    environment:
+      - ELASTICSEARCH_URL=http://js-es:9200
+      - REDIS_URL=redis://photo-drive-redis:6379
+      - STORAGE_ROOT=/storage
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/storage
+    depends_on:
+      - redis
+    networks:
+      - home-network
+    restart: unless-stopped
+
+  media-nginx:
+    image: nginx:stable-alpine
+    container_name: photo-drive-media-nginx
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/storage:ro
+      - ./docker/nginx/media.conf:/etc/nginx/conf.d/default.conf:ro
+      - photo-drive-nginx-cache:/var/cache/nginx
+    networks:
+      - home-network
+    restart: unless-stopped
+
+networks:
+  home-network:
+    external: true
+
+volumes:
+  photo-drive-redis:
+  photo-drive-nginx-cache:

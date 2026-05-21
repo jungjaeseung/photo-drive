@@ -1,0 +1,17 @@
+{
+  "name": "photo-drive",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @photo-drive/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "es:init": "pnpm --filter @photo-drive/web es:init",
+    "docker:build": "docker compose build",
+    "docker:start": "docker compose up -d",
+    "docker:stop": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

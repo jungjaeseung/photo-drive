@@ -1,0 +1,18 @@
+FROM node:20-alpine AS base
+RUN apk add --no-cache ffmpeg vips-dev build-base python3
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/worker/package.json ./apps/worker/
+RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+
+COPY packages/shared ./packages/shared
+COPY apps/worker ./apps/worker
+
+WORKDIR /app/apps/worker
+RUN pnpm build
+
+ENV NODE_ENV=production
+CMD ["node", "dist/index.js"]
