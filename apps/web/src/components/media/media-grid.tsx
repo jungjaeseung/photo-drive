@@ -3,6 +3,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
+import { setMediaNavContext } from "@/lib/media-nav-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressiveImage } from "./progressive-image";
@@ -81,6 +82,11 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
     return cellWidth + gap;
   }, [containerWidth, columnCount]);
 
+  const orderedItems = useMemo(
+    () => sections.flatMap((section) => section.items),
+    [sections]
+  );
+
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
@@ -125,7 +131,16 @@ export function MediaGrid({ items, columnCount = 4 }: MediaGridProps) {
                       key={item.id}
                       type="button"
                       className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900"
-                      onClick={() => router.push(`/p/${item.id}`)}
+                      onClick={() => {
+                        setMediaNavContext(
+                          orderedItems.map((i) => ({
+                            id: i.id,
+                            thumbnailUrl: i.thumbnailUrl,
+                          })),
+                          item.id
+                        );
+                        router.push(`/p/${item.id}`);
+                      }}
                     >
                       <ProgressiveImage
                         thumbSrc={item.thumbnailUrl}
