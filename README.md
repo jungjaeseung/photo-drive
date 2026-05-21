@@ -39,6 +39,51 @@ pnpm es:init   # 컨테이너 내 또는 호스트에서 ES 인덱스 생성
 
 접속: `https://3harang.ddns.net/photos` (home-server nginx에 `docker/nginx/home-server-snippet.conf` 참고)
 
+## GitHub Actions 배포 (main push)
+
+`main` 브랜치에 push하면 홈서버에 SSH로 배포합니다.
+
+### 1. 홈서버 준비
+
+- `~/source/photo-drive`에 repo clone
+- `pnpm`, `docker`, `docker compose` 설치
+- 배포 키 등록 (아래 공개키를 `~/.ssh/authorized_keys`에 추가)
+
+```bash
+# 배포 전용 키 생성 (로컬 또는 서버)
+ssh-keygen -t ed25519 -C "github-actions-photo-drive" -f ~/.ssh/photo-drive-deploy -N ""
+cat ~/.ssh/photo-drive-deploy.pub   # 이 내용을 authorized_keys에
+```
+
+### 2. GitHub Secrets 설정
+
+Repository → Settings → Secrets and variables → Actions:
+
+| Secret | 예시 |
+|--------|------|
+| `SSH_HOST` | `59.13.92.28` 또는 DDNS |
+| `SSH_USER` | `jung` |
+| `SSH_PRIVATE_KEY` | `photo-drive-deploy` **개인키 전체** |
+| `SSH_PORT` | **`2222`** (홈서버 SSH 포트, 22가 아니면 필수) |
+
+연결 테스트:
+
+```bash
+ssh -i ~/.ssh/photo-drive-deploy -p 2222 jung@59.13.92.28 "echo ok"
+```
+
+### 3. 실행 내용
+
+```bash
+cd ~/source/photo-drive
+git pull origin main
+export STORAGE_HOST_PATH=/mnt/extra/photo-drive
+pnpm docker:build
+docker compose up -d app
+```
+
+worker도 같이 올리려면 워크플로 마지막 줄을 `docker compose up -d app worker`로 바꾸세요.
+
 ## 구조
 
 - `apps/web` — Next.js UI + API

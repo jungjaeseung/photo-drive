@@ -1,0 +1,31 @@
+name: Deploy to Home Server
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-photo-drive
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd ~/source/photo-drive
+            git pull origin main
+            export STORAGE_HOST_PATH="${STORAGE_HOST_PATH:-/mnt/extra/photo-drive}"
+            pnpm docker:build
+            docker compose up -d app worker
