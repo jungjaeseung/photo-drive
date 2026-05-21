@@ -3,6 +3,7 @@
  *
  *   export ELASTICSEARCH_URL=http://127.0.0.1:9200
  *   pnpm --filter @photo-drive/web es:backfill-sort-at
+ * (shared 패키지 dist를 자동 빌드한 뒤 실행)
  */
 import { Client } from "@elastic/elasticsearch";
 import {
