@@ -17,6 +17,7 @@ export interface MediaGridItem {
   previewUrl?: string;
   uploadedAt: string;
   takenAt: string;
+  sortAt?: string;
   duration?: number;
 }
 

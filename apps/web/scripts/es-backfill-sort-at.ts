@@ -38,10 +38,6 @@ async function main() {
       }
 
       const sortAt = computeSortAt(doc);
-      if (doc.sortAt === sortAt) {
-        skipped++;
-        continue;
-      }
 
       await client.update({
         index: ES_INDEX_MEDIA,

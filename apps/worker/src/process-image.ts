@@ -75,6 +75,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
         takenAt,
         uploadedAt: doc.uploadedAt,
         createdAt: doc.createdAt,
+        exif: exif ?? undefined,
       }),
       exif: exif ? exif : undefined,
     };

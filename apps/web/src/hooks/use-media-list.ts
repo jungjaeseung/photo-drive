@@ -32,7 +32,8 @@ function patchItems(
     if (!patch) return item;
     if (
       patch.status !== item.status ||
-      patch.thumbnailUrl !== item.thumbnailUrl
+      patch.thumbnailUrl !== item.thumbnailUrl ||
+      patch.sortAt !== item.sortAt
     ) {
       changed = true;
       return patch;
@@ -122,14 +123,18 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         }
 
         setItems((current) => {
+          let next: MediaGridItem[];
           if (append) {
-            return sortMediaItems([...current, ...apiItems]);
+            next = sortMediaItems([...current, ...apiItems]);
+          } else if (fetchOptions?.silent) {
+            next = patchItems(current, [...apiItems, ...resolved]);
+          } else {
+            next = patchItems(
+              mergeWithOptimisticProcessing(current, apiItems),
+              resolved
+            );
           }
-          if (fetchOptions?.silent) {
-            return patchItems(current, [...apiItems, ...resolved]);
-          }
-          const merged = mergeWithOptimisticProcessing(current, apiItems);
-          return patchItems(merged, resolved);
+          return sortMediaItems(next);
         });
         setCursor(data.nextCursor);
         setHasMore(data.hasMore ?? false);

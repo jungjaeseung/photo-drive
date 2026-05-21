@@ -1,5 +1,6 @@
 import { searchMedia } from "@/lib/es";
 import { getMediaAssetUrl } from "@/lib/media-url";
+import { sortMediaItems } from "@/lib/media-sort";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -11,12 +12,14 @@ export async function GET(request: NextRequest) {
 
   const result = await searchMedia({ type, albumId, cursor, size });
 
-  const items = result.items.map((doc) => ({
-    ...doc,
-    thumbnailUrl: getMediaAssetUrl(doc, "thumb"),
-    previewUrl: getMediaAssetUrl(doc, "medium"),
-    originalUrl: getMediaAssetUrl(doc, "original"),
-  }));
+  const items = sortMediaItems(
+    result.items.map((doc) => ({
+      ...doc,
+      thumbnailUrl: getMediaAssetUrl(doc, "thumb"),
+      previewUrl: getMediaAssetUrl(doc, "medium"),
+      originalUrl: getMediaAssetUrl(doc, "original"),
+    }))
+  );
 
   return NextResponse.json({
     items,
