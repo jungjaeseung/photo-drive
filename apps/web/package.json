@@ -20,7 +20,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
     "@tanstack/react-virtual": "^3.13.12",
-    "archiver": "^8.0.0",
+    "archiver": "^7.0.1",
     "bullmq": "^5.49.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   transpilePackages: ["@photo-drive/shared"],
+  serverExternalPackages: ["archiver"],
   experimental: {
     serverActions: {
       bodySizeLimit: "500mb",
