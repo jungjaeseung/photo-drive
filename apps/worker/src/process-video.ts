@@ -10,11 +10,13 @@ import {
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
+import { takenAtFromFfprobe } from "./media-date.js";
 
 const execFileAsync = promisify(execFile);
 
 interface FfprobeFormat {
   duration?: string;
+  tags?: Record<string, string | undefined>;
 }
 
 interface FfprobeStream {
@@ -22,6 +24,7 @@ interface FfprobeStream {
   codec_name?: string;
   width?: number;
   height?: number;
+  tags?: Record<string, string | undefined>;
 }
 
 async function ffprobe(filePath: string) {
@@ -61,6 +64,8 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     const height = videoStream?.height;
     const codec = videoStream?.codec_name;
     const resolution = width && height ? `${width}x${height}` : undefined;
+
+    const takenAt = takenAtFromFfprobe(probe, doc.takenAt, uploadedAt);
 
     const posterJpg = path.join(dir, "poster-temp.jpg");
     const posterPath = path.join(dir, "poster.webp");
@@ -116,6 +121,7 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       height,
       codec,
       resolution,
+      takenAt,
     };
 
     await writeFile(

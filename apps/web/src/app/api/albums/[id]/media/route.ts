@@ -32,10 +32,14 @@ export async function POST(
   await updateMedia(mediaId, { albumIds });
 
   const mediaCount = await countMediaInAlbum(albumId);
-  await updateAlbum(albumId, {
+  const albumUpdate: Record<string, unknown> = {
     mediaCount,
     updatedAt: new Date().toISOString(),
-  });
+  };
+  if (!album.coverMediaId) {
+    albumUpdate.coverMediaId = mediaId;
+  }
+  await updateAlbum(albumId, albumUpdate);
 
   return NextResponse.json({ ok: true, albumIds });
 }

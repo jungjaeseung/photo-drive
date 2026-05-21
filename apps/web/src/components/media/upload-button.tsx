@@ -22,6 +22,9 @@ export function UploadButton({ onUploaded }: UploadButtonProps) {
       for (const file of Array.from(files)) {
         const formData = new FormData();
         formData.append("file", file);
+        if (file.lastModified > 0) {
+          formData.append("fileLastModified", String(file.lastModified));
+        }
         const res = await fetch(`${getApiBase()}/api/media/upload`, {
           method: "POST",
           body: formData,

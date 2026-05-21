@@ -6,6 +6,7 @@ import {
   getRelativeMediaPath,
   IMAGE_MIME_PREFIX,
   VIDEO_MIME_PREFIX,
+  takenAtFromFileLastModified,
   type MediaDocument,
   type MediaType,
 } from "@photo-drive/shared";
@@ -54,8 +55,13 @@ export function buildInitialMediaDoc(params: {
   sha256: string;
   relativeOriginalPath: string;
   uploadedAt: Date;
+  fileLastModified?: number;
 }): MediaDocument {
   const now = params.uploadedAt.toISOString();
+  const takenAt = takenAtFromFileLastModified(
+    params.fileLastModified ?? 0,
+    params.uploadedAt
+  );
   return {
     id: params.id,
     type: params.type,
@@ -67,7 +73,7 @@ export function buildInitialMediaDoc(params: {
     size: params.size,
     sha256: params.sha256,
     createdAt: now,
-    takenAt: now,
+    takenAt,
     uploadedAt: now,
     albumIds: [],
     favorite: false,

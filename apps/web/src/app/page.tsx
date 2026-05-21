@@ -1,8 +1,9 @@
 "use client";
 
+import { GridActionBar } from "@/components/media/grid-action-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
-import { UploadButton } from "@/components/media/upload-button";
+import { useMediaGridInteraction } from "@/hooks/use-media-grid-interaction";
 import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +17,7 @@ function getColumnCount(width: number) {
 export default function LibraryPage() {
   const { items, loading, hasMore, loadMore, refresh } = useMediaList();
   const viewer = useMediaViewer();
+  const { gridMode, handleLongPress } = useMediaGridInteraction();
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(4);
 
@@ -43,7 +45,11 @@ export default function LibraryPage() {
     <div className="flex h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
         <h1 className="text-xl font-bold">보관함</h1>
-        <p className="text-xs text-zinc-500">{items.length}개 항목</p>
+        <p className="text-xs text-zinc-500">
+          {gridMode.mode === "select" && gridMode.selectedCount > 0
+            ? `${gridMode.selectedCount}개 선택`
+            : `${items.length}개 항목`}
+        </p>
       </header>
       <div className="flex-1 overflow-hidden">
         {items.length === 0 && !loading ? (
@@ -54,7 +60,11 @@ export default function LibraryPage() {
           <MediaGrid
             items={items}
             columnCount={columnCount}
+            mode={gridMode.mode}
+            selectedIds={gridMode.selectedIds}
             onSelect={(item) => viewer.select(item.id)}
+            onToggleSelect={gridMode.toggleSelect}
+            onLongPress={handleLongPress}
           />
         )}
         <div ref={sentinelRef} className="h-4" />
@@ -65,7 +75,14 @@ export default function LibraryPage() {
           <p className="py-4 text-center text-xs text-zinc-400">모두 불러옴</p>
         )}
       </div>
-      <UploadButton onUploaded={refresh} />
+      <GridActionBar
+        mode={gridMode.mode}
+        onModeChange={gridMode.setMode}
+        selectedIds={gridMode.selectedIds}
+        showUpload
+        onUploaded={refresh}
+        onAlbumAdded={refresh}
+      />
       <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,7 @@ import {
   ChevronRight,
   CloudDownload,
   Download,
+  FolderPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -56,6 +58,7 @@ export function MediaDetail({
 }: MediaDetailProps) {
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [originalLoading, setOriginalLoading] = useState(false);
+  const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -233,6 +236,16 @@ export function MediaDetail({
             )}
           </div>
           <div className="flex gap-2">
+            {media.id && media.status !== "processing" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAlbumPickerOpen(true)}
+              >
+                <FolderPlus className="h-4 w-4" />
+                앨범 추가
+              </Button>
+            )}
             {(media.originalUrl || media.previewUrl) && (
               <Button size="sm" variant="secondary" onClick={handleSave}>
                 <Download className="h-4 w-4" />
@@ -247,6 +260,12 @@ export function MediaDetail({
           </div>
         </div>
       </DialogContent>
+
+      <AlbumPickerDialog
+        open={albumPickerOpen}
+        onOpenChange={setAlbumPickerOpen}
+        mediaIds={media.id ? [media.id] : []}
+      />
     </Dialog>
   );
 }

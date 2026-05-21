@@ -61,6 +61,12 @@ export async function POST(request: Request) {
       extension,
     });
 
+    const lastModifiedRaw = formData.get("fileLastModified");
+    const fileLastModified =
+      typeof lastModifiedRaw === "string"
+        ? parseInt(lastModifiedRaw, 10)
+        : file.lastModified;
+
     const doc = buildInitialMediaDoc({
       id: mediaId,
       type: mediaType,
@@ -71,6 +77,7 @@ export async function POST(request: Request) {
       sha256,
       relativeOriginalPath,
       uploadedAt,
+      fileLastModified,
     });
 
     await indexMedia(doc);

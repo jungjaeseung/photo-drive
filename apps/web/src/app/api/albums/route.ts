@@ -1,3 +1,4 @@
+import { resolveAlbumCoverThumbnail } from "@/lib/album-cover";
 import { indexAlbum, listAlbums } from "@/lib/es";
 import type { AlbumDocument } from "@photo-drive/shared";
 import { NextRequest, NextResponse } from "next/server";
@@ -5,7 +6,13 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   const albums = await listAlbums();
-  return NextResponse.json({ items: albums });
+  const items = await Promise.all(
+    albums.map(async (album) => ({
+      ...album,
+      coverThumbnailUrl: await resolveAlbumCoverThumbnail(album),
+    }))
+  );
+  return NextResponse.json({ items });
 }
 
 export async function POST(request: NextRequest) {

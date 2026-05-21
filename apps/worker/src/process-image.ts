@@ -11,13 +11,7 @@ import exifr from "exifr";
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
-
-function parseExifDate(value: unknown): string | undefined {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString();
-  const d = new Date(String(value));
-  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
-}
+import { takenAtFromExif } from "./media-date.js";
 
 export async function processImage(mediaId: string, storageRoot?: string): Promise<void> {
   const root = storageRoot ?? getStorageRoot();
@@ -31,11 +25,16 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
   const originalFull = path.join(root, doc.originalPath);
 
   try {
-    const exif = await exifr.parse(originalFull).catch(() => null);
-    const takenAt =
-      parseExifDate(exif?.DateTimeOriginal) ??
-      parseExifDate(exif?.CreateDate) ??
-      doc.takenAt;
+    const exif = (await exifr
+      .parse(originalFull, {
+        reviveValues: true,
+        tiff: true,
+        exif: true,
+        xmp: true,
+      })
+      .catch(() => null)) as Record<string, unknown> | null;
+
+    const takenAt = takenAtFromExif(exif, doc.takenAt, uploadedAt);
 
     const image = sharp(originalFull).rotate();
     const metadata = await image.metadata();
@@ -71,7 +70,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
       width: metadata.width,
       height: metadata.height,
       takenAt,
-      exif: exif ? (exif as Record<string, unknown>) : undefined,
+      exif: exif ? exif : undefined,
     };
 
     await writeFile(

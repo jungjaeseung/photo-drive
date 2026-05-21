@@ -3,9 +3,9 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
-import { setMediaNavContext } from "@/lib/media-nav-context";
+import type { GridMode } from "@/hooks/use-grid-mode";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ProgressiveImage } from "./progressive-image";
+import { MediaGridCell } from "./media-grid-cell";
 
 export interface MediaGridItem {
   id: string;
@@ -21,7 +21,11 @@ export interface MediaGridItem {
 interface MediaGridProps {
   items: MediaGridItem[];
   columnCount?: number;
+  mode?: GridMode;
+  selectedIds?: Set<string>;
   onSelect?: (item: MediaGridItem) => void;
+  onToggleSelect?: (id: string) => void;
+  onLongPress?: (item: MediaGridItem) => void;
 }
 
 function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridItem[] }[] {
@@ -39,7 +43,15 @@ function groupByDate(items: MediaGridItem[]): { label: string; items: MediaGridI
     }));
 }
 
-export function MediaGrid({ items, columnCount = 4, onSelect }: MediaGridProps) {
+export function MediaGrid({
+  items,
+  columnCount = 4,
+  mode = "detail",
+  selectedIds,
+  onSelect,
+  onToggleSelect,
+  onLongPress,
+}: MediaGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const sections = useMemo(() => groupByDate(items), [items]);
@@ -126,42 +138,16 @@ export function MediaGrid({ items, columnCount = 4, onSelect }: MediaGridProps) 
                   }}
                 >
                   {row.items.map((item) => (
-                    <button
+                    <MediaGridCell
                       key={item.id}
-                      type="button"
-                      className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900"
-                      onClick={() => {
-                        setMediaNavContext(
-                          orderedItems.map((i) => ({
-                            id: i.id,
-                            thumbnailUrl: i.thumbnailUrl,
-                          })),
-                          item.id
-                        );
-                        onSelect?.(item);
-                      }}
-                    >
-                      <ProgressiveImage
-                        thumbSrc={item.thumbnailUrl}
-                        mainSrc={item.thumbnailUrl}
-                        alt=""
-                        className="aspect-square"
-                      />
-                      {item.type === "video" && (
-                        <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
-                          {item.duration
-                            ? `${Math.floor(item.duration / 60)}:${String(
-                                Math.floor(item.duration % 60)
-                              ).padStart(2, "0")}`
-                            : "VIDEO"}
-                        </span>
-                      )}
-                      {item.status === "processing" && (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs text-white">
-                          처리 중
-                        </span>
-                      )}
-                    </button>
+                      item={item}
+                      mode={mode}
+                      selected={selectedIds?.has(item.id) ?? false}
+                      orderedItems={orderedItems}
+                      onSelect={onSelect}
+                      onToggleSelect={onToggleSelect}
+                      onLongPress={onLongPress}
+                    />
                   ))}
                 </div>
               )}
