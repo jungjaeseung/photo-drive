@@ -37,6 +37,18 @@ export default function CollectionsPage() {
     );
   }, [loadAlbums, loadCategoryPreviews]);
 
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadAlbums();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadAlbums]);
+
   async function createAlbum() {
     if (!name.trim()) return;
     await fetch(`${base}/api/albums`, {

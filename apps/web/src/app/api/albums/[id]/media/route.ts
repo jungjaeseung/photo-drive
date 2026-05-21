@@ -1,10 +1,5 @@
-import {
-  countMediaInAlbum,
-  getAlbumById,
-  getMediaById,
-  updateAlbum,
-  updateMedia,
-} from "@/lib/es";
+import { syncAlbumCover } from "@/lib/album-cover";
+import { getAlbumById, getMediaById, updateMedia } from "@/lib/es";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -30,16 +25,7 @@ export async function POST(
 
   const albumIds = Array.from(new Set([...media.albumIds, albumId]));
   await updateMedia(mediaId, { albumIds });
-
-  const mediaCount = await countMediaInAlbum(albumId);
-  const albumUpdate: Record<string, unknown> = {
-    mediaCount,
-    updatedAt: new Date().toISOString(),
-  };
-  if (!album.coverMediaId) {
-    albumUpdate.coverMediaId = mediaId;
-  }
-  await updateAlbum(albumId, albumUpdate);
+  await syncAlbumCover(albumId);
 
   return NextResponse.json({ ok: true, albumIds });
 }
@@ -62,12 +48,7 @@ export async function DELETE(
 
   const albumIds = media.albumIds.filter((a) => a !== albumId);
   await updateMedia(mediaId, { albumIds });
-
-  const mediaCount = await countMediaInAlbum(albumId);
-  await updateAlbum(albumId, {
-    mediaCount,
-    updatedAt: new Date().toISOString(),
-  });
+  await syncAlbumCover(albumId);
 
   return NextResponse.json({ ok: true, albumIds });
 }
