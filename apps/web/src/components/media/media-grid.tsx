@@ -18,6 +18,7 @@ export interface MediaGridItem {
   uploadedAt: string;
   takenAt: string;
   sortAt?: string;
+  exif?: Record<string, unknown>;
   duration?: number;
 }
 

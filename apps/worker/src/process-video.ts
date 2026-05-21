@@ -127,6 +127,7 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       resolution,
       takenAt,
       sortAt: computeSortAt({
+        type: "video",
         takenAt,
         uploadedAt: doc.uploadedAt,
         createdAt: doc.createdAt,

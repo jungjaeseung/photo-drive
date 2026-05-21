@@ -64,6 +64,7 @@ export function buildInitialMediaDoc(params: {
     params.uploadedAt
   );
   const sortAt = computeSortAt({
+    type: params.type,
     takenAt,
     uploadedAt: now,
     createdAt: now,
