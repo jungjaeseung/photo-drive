@@ -11,6 +11,8 @@ RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 COPY packages/shared ./packages/shared
 COPY apps/worker ./apps/worker
 
+RUN pnpm --filter @photo-drive/shared build
+
 WORKDIR /app/apps/worker
 RUN pnpm build
 

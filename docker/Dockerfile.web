@@ -16,6 +16,7 @@ COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_module
 COPY . .
 ARG NEXT_PUBLIC_BASE_PATH=/photos
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+RUN pnpm --filter @photo-drive/shared build
 RUN pnpm --filter @photo-drive/web build
 
 FROM base AS runner
