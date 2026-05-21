@@ -105,6 +105,9 @@ importers:
       eslint-config-next:
         specifier: 15.5.18
         version: 15.5.18(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-react-hooks:
+        specifier: ^5.2.0
+        version: 5.2.0(eslint@9.39.4(jiti@2.7.0))
       sharp:
         specifier: ^0.34.2
         version: 0.34.5
@@ -153,10 +156,11 @@ importers:
         version: 5.9.3
 
   packages/shared:
-    devDependencies:
+    dependencies:
       '@types/node':
         specifier: ^20
         version: 20.19.41
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
