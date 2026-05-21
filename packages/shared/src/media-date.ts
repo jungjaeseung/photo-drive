@@ -55,6 +55,47 @@ export function pickTakenAt(
   return pickTakenAtInOrder(candidates, options);
 }
 
+const MIN_CAPTURE_MS = new Date("1980-01-01T00:00:00.000Z").getTime();
+
+/** 촬영 시각으로 쓸 수 있는지 (빈 값·1970년대 등 제외) */
+export function isPlausibleCaptureDate(iso: string): boolean {
+  const ms = new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < MIN_CAPTURE_MS) return false;
+  return ms <= Date.now() + 86_400_000;
+}
+
+/**
+ * 그리드/앨범 정렬용 시각: takenAt → uploadedAt → createdAt
+ * (EXIF 없음·동영상 메타 실패·잘못된 takenAt 대비)
+ */
+export function getEffectiveSortIso(doc: {
+  takenAt?: string | null;
+  uploadedAt?: string | null;
+  createdAt?: string | null;
+}): string {
+  if (doc.takenAt) {
+    const iso = parseMediaDate(doc.takenAt);
+    if (iso && isPlausibleCaptureDate(iso)) return iso;
+  }
+  if (doc.uploadedAt) {
+    const iso = parseMediaDate(doc.uploadedAt);
+    if (iso) return iso;
+  }
+  if (doc.createdAt) {
+    const iso = parseMediaDate(doc.createdAt);
+    if (iso) return iso;
+  }
+  return new Date(0).toISOString();
+}
+
+export function getEffectiveSortMillis(doc: {
+  takenAt?: string | null;
+  uploadedAt?: string | null;
+  createdAt?: string | null;
+}): number {
+  return new Date(getEffectiveSortIso(doc)).getTime();
+}
+
 /** Client File.lastModified → initial takenAt before worker metadata pass. */
 export function takenAtFromFileLastModified(
   lastModifiedMs: number,

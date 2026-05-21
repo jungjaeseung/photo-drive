@@ -50,9 +50,11 @@ export function useMediaList(options: UseMediaListOptions = {}) {
 
         const apiItems = (data.items ?? []) as MediaGridItem[];
         setItems((prev) =>
-          append
-            ? [...prev, ...apiItems]
-            : mergeWithOptimisticProcessing(prev, apiItems)
+          sortMediaItems(
+            append
+              ? [...prev, ...apiItems]
+              : mergeWithOptimisticProcessing(prev, apiItems)
+          )
         );
         setCursor(data.nextCursor);
         setHasMore(data.hasMore ?? false);

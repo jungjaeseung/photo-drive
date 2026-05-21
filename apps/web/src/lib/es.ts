@@ -89,7 +89,30 @@ export async function searchMedia(params: {
     must.push({ term: { albumIds: params.albumId } });
   }
 
-  const sort = [{ takenAt: "desc" }, { id: "desc" }];
+  const sort = [
+    {
+      _script: {
+        type: "number",
+        order: "desc",
+        script: {
+          lang: "painless",
+          source: `
+            long minMs = 315532800000L;
+            long pick(String field) {
+              if (!doc.containsKey(field) || doc[field].size() == 0) return -1L;
+              long ms = doc[field].value.toInstant().toEpochMilli();
+              return ms >= minMs ? ms : -1L;
+            }
+            long t = pick("takenAt");
+            if (t < 0) t = pick("uploadedAt");
+            if (t < 0) t = pick("createdAt");
+            return t >= 0 ? t : 0L;
+          `,
+        },
+      },
+    },
+    { id: { order: "desc", unmapped_type: "keyword" } },
+  ];
   const searchBody: Record<string, unknown> = {
     size: size + 1,
     query: { bool: { must } },
@@ -97,8 +120,9 @@ export async function searchMedia(params: {
   };
 
   if (params.cursor) {
-    const [takenAt, id] = params.cursor.split("|");
-    searchBody.search_after = [takenAt, id];
+    const [sortAt, id] = params.cursor.split("|");
+    const sortKey = /^\d+$/.test(sortAt) ? Number(sortAt) : sortAt;
+    searchBody.search_after = [sortKey, id];
   }
 
   const result = await es.search({
@@ -108,7 +132,7 @@ export async function searchMedia(params: {
 
   const hits = (result.body.hits.hits ?? []) as Array<{
     _source: MediaDocument;
-    sort?: [string, string];
+    sort?: [number | string, string];
   }>;
 
   const hasMore = hits.length > size;
@@ -117,9 +141,7 @@ export async function searchMedia(params: {
   const nextCursor =
     hasMore && last?.sort
       ? `${last.sort[0]}|${last.sort[1]}`
-      : hasMore && items.length
-        ? `${items[items.length - 1].takenAt}|${items[items.length - 1].id}`
-        : undefined;
+      : undefined;
 
   return { items, nextCursor, hasMore };
 }

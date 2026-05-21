@@ -7,6 +7,12 @@ const IMAGE_EXIF_DATE_KEYS = [
   "MetadataDate",
   "DateCreated",
   "ModifyDate",
+  "DateTime",
+  "FileModifyDate",
+  "FileCreateDate",
+  "SubSecDateTimeOriginal",
+  "SubSecCreateDate",
+  "SubSecDateTimeDigitized",
 ] as const;
 
 export function takenAtFromExif(
@@ -17,8 +23,22 @@ export function takenAtFromExif(
   if (!exif) return fallback;
 
   const candidates: unknown[] = [];
+  const seen = new Set<unknown>();
+
+  function add(value: unknown) {
+    if (value == null || seen.has(value)) return;
+    seen.add(value);
+    candidates.push(value);
+  }
+
   for (const key of IMAGE_EXIF_DATE_KEYS) {
-    if (exif[key] != null) candidates.push(exif[key]);
+    add(exif[key]);
+  }
+
+  for (const [key, value] of Object.entries(exif)) {
+    if (/date|time|created|modified|digitized/i.test(key)) {
+      add(value);
+    }
   }
 
   return pickTakenAtInOrder([...candidates, fallback], { notAfter }) ?? fallback;
@@ -49,10 +69,26 @@ export function takenAtFromFfprobe(
   const candidates: unknown[] = [
     formatTags.creation_time,
     formatTags["com.apple.quicktime.creationdate"],
+    formatTags["com.apple.quicktime.make"],
     formatTags.date,
+    formatTags["DATE"],
     ...streamDates,
-    fallback,
   ];
+
+  for (const [key, value] of Object.entries(formatTags)) {
+    if (/date|time|created/i.test(key) && value) {
+      candidates.push(value);
+    }
+  }
+  for (const stream of probe.streams ?? []) {
+    for (const [key, value] of Object.entries(stream.tags ?? {})) {
+      if (/date|time|created/i.test(key) && value) {
+        candidates.push(value);
+      }
+    }
+  }
+
+  candidates.push(fallback);
 
   return pickTakenAtInOrder(candidates, { notAfter }) ?? fallback;
 }

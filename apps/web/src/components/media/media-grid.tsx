@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { sortMediaItems } from "@/lib/media-sort";
+import { getEffectiveSortIso } from "@photo-drive/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
 import { SelectionCheck } from "./selection-check";
@@ -36,7 +37,7 @@ function groupByDate(
 ): { label: string; itemIds: string[]; items: MediaGridItem[] }[] {
   const map = new Map<string, MediaGridItem[]>();
   for (const item of sortMediaItems(items)) {
-    const key = format(parseISO(item.takenAt || item.uploadedAt), "yyyy-MM-dd");
+    const key = format(parseISO(getEffectiveSortIso(item)), "yyyy-MM-dd");
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(item);
   }
