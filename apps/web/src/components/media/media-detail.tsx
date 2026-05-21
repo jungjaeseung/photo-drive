@@ -170,9 +170,10 @@ export function MediaDetail({
           {media.type === "video" ? (
             <video
               key={media.id}
-              src={media.videoPreviewUrl ?? media.originalUrl}
+              src={media.originalUrl ?? media.videoPreviewUrl}
               poster={media.posterUrl ?? media.thumbnailUrl}
               controls
+              playsInline
               className="max-h-[55vh] max-w-full lg:max-h-[60vh]"
             />
           ) : (
