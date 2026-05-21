@@ -5,6 +5,7 @@ import {
   type MediaDetailData,
 } from "@/components/media/media-detail";
 import type { MediaViewer } from "@/hooks/use-media-viewer";
+import { invalidatePrefetchedMedia } from "@/lib/media-prefetch";
 import { useEffect, useRef } from "react";
 
 interface MediaViewerLayerProps {
@@ -40,7 +41,9 @@ export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
     if (!confirm("이 미디어를 삭제할까요?")) return;
 
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    await fetch(`${base}/api/media/${viewer.selectedId}`, { method: "DELETE" });
+    const deletedId = viewer.selectedId;
+    await fetch(`${base}/api/media/${deletedId}`, { method: "DELETE" });
+    invalidatePrefetchedMedia(deletedId);
 
     if (viewer.nextId) {
       viewer.select(viewer.nextId);

@@ -12,6 +12,7 @@ import {
   Download,
   FolderPlus,
 } from "lucide-react";
+import { isOriginalUrlCached } from "@/lib/media-prefetch";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface MediaDetailData {
@@ -69,6 +70,11 @@ export function MediaDetail({
     setOriginalLoaded(false);
     setOriginalLoading(false);
     if (!isImage || !media.originalUrl) return;
+
+    if (isOriginalUrlCached(media.originalUrl)) {
+      setOriginalLoaded(true);
+      return;
+    }
 
     setOriginalLoading(true);
     const img = new Image();
@@ -174,6 +180,11 @@ export function MediaDetail({
               poster={media.posterUrl ?? media.thumbnailUrl}
               controls
               playsInline
+              preload={
+                isOriginalUrlCached(media.originalUrl)
+                  ? "auto"
+                  : "metadata"
+              }
               className="max-h-[55vh] max-w-full lg:max-h-[60vh]"
             />
           ) : (

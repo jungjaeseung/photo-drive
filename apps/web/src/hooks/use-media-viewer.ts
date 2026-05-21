@@ -2,6 +2,11 @@
 
 import type { MediaDetailData } from "@/components/media/media-detail";
 import { useMediaNav } from "@/hooks/use-media-nav";
+import {
+  getPrefetchedMedia,
+  prefetchAdjacentMedia,
+  prefetchMediaDetail,
+} from "@/lib/media-prefetch";
 import { useCallback, useEffect, useState } from "react";
 
 export function useMediaViewer() {
@@ -28,21 +33,30 @@ export function useMediaViewer() {
       return;
     }
 
+    const cached = getPrefetchedMedia(selectedId);
+    if (cached) {
+      setMedia(cached);
+      setLoading(false);
+    } else {
+      setMedia(null);
+      setLoading(true);
+    }
+
     let cancelled = false;
-    setLoading(true);
-    fetch(`${base}/api/media/${selectedId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) setMedia(data);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    prefetchMediaDetail(selectedId, base).then((data) => {
+      if (!cancelled && data) setMedia(data);
+      if (!cancelled) setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
   }, [selectedId, base]);
+
+  useEffect(() => {
+    if (!selectedId || !media) return;
+    prefetchAdjacentMedia([nav.prevId, nav.nextId], base);
+  }, [selectedId, media?.id, nav.prevId, nav.nextId, base]);
 
   return {
     selectedId,
