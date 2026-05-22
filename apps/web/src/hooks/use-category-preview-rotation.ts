@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const ROTATION_MS = 5000;
+const ROTATION_MS = 8000;
 
 type PreviewResponse = {
   photoThumbnailUrl?: string;
