@@ -1,4 +1,8 @@
-import { fetchPushConfig } from "@/lib/push-config";
+import {
+  clearPushConfigCache,
+  fetchPushConfig,
+  getClientBasePath,
+} from "@/lib/push-config";
 
 /** VAPID public key (URL-safe base64) → PushManager applicationServerKey */
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -11,6 +15,9 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
+
+export const PUSH_PROMPT_OPEN_EVENT = "photo-drive-open-push-prompt";
+export const SW_READY_EVENT = "photo-drive-sw-ready";
 
 /** 동기 1차 검사 (iOS는 PushManager가 window에 없음) */
 export function isPushSupported(): boolean {
@@ -30,6 +37,17 @@ export async function hasPushManager(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** SW 등록·활성화까지 대기 (최초 진입 시 pushManager가 늦게 뜸) */
+export async function waitForPushManager(timeoutMs = 20000): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await hasPushManager()) return true;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return false;
 }
 
 export function isIOS(): boolean {
@@ -63,13 +81,13 @@ async function getVapidPublicKey(): Promise<string | null> {
 
 export async function subscribeToPushNotifications(): Promise<boolean> {
   const vapidPublicKey = await getVapidPublicKey();
-  if (!vapidPublicKey || !(await hasPushManager())) return false;
+  if (!vapidPublicKey || !(await waitForPushManager())) return false;
   if (!isPushContextOk()) return false;
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return false;
 
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const base = getClientBasePath();
   const reg = await navigator.serviceWorker.ready;
   let subscription = await reg.pushManager.getSubscription();
 
@@ -93,14 +111,14 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
 
 /** 권한은 있으나 구독이 없을 때 서버에 다시 등록 */
 export async function ensurePushSubscription(): Promise<boolean> {
-  if (Notification.permission !== "granted" || !(await hasPushManager())) {
+  if (Notification.permission !== "granted" || !(await waitForPushManager())) {
     return false;
   }
 
   const vapidPublicKey = await getVapidPublicKey();
   if (!vapidPublicKey) return false;
 
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const base = getClientBasePath();
   const reg = await navigator.serviceWorker.ready;
   let subscription = await reg.pushManager.getSubscription();
 
@@ -131,16 +149,28 @@ export async function hasActivePushSubscription(): Promise<boolean> {
   return (await reg.pushManager.getSubscription()) != null;
 }
 
-/** 배너 표시 여부 판단용 */
-export async function getPushSetupState(): Promise<
-  "unsupported" | "server_off" | "ios_browser" | "denied" | "ready" | "need_enable" | "need_reconnect"
-> {
-  if (!isPushSupported() || !(await hasPushManager())) return "unsupported";
+export type PushSetupState =
+  | "unsupported"
+  | "server_off"
+  | "ios_browser"
+  | "denied"
+  | "ready"
+  | "need_enable"
+  | "need_reconnect";
+
+/** 배너·종 버튼 표시 여부 판단용 */
+export async function getPushSetupState(): Promise<PushSetupState> {
+  if (!isPushSupported()) return "unsupported";
 
   const config = await fetchPushConfig();
   if (!config.enabled) return "server_off";
 
   if (!isPushContextOk()) return "ios_browser";
+
+  const hasPm = await waitForPushManager(8000);
+  if (!hasPm) {
+    return isIOS() && !isStandalonePwa() ? "ios_browser" : "unsupported";
+  }
 
   const permission = Notification.permission;
   if (permission === "denied") return "denied";
@@ -151,9 +181,11 @@ export async function getPushSetupState(): Promise<
   return "need_enable";
 }
 
-export const PUSH_PROMPT_OPEN_EVENT = "photo-drive-open-push-prompt";
-
 export function openPushPrompt(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(PUSH_PROMPT_OPEN_EVENT));
+}
+
+export function invalidatePushState(): void {
+  clearPushConfigCache();
 }

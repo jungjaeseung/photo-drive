@@ -9,6 +9,7 @@ import {
   isStandalonePwa,
   openPushPrompt,
   PUSH_PROMPT_OPEN_EVENT,
+  SW_READY_EVENT,
   subscribeToPushNotifications,
 } from "@/lib/push-client";
 import { Bell, X } from "lucide-react";
@@ -74,6 +75,12 @@ export function PwaPushSubscribe() {
 
   useEffect(() => {
     void evaluate();
+    const t = setTimeout(() => void evaluate(), 1500);
+    const t2 = setTimeout(() => void evaluate(), 5000);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
   }, [evaluate]);
 
   useEffect(() => {
@@ -82,8 +89,13 @@ export function PwaPushSubscribe() {
       setForceOpen(true);
       void evaluate({ bypassDismiss: true });
     };
+    const onSwReady = () => void evaluate();
     window.addEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
+    window.addEventListener(SW_READY_EVENT, onSwReady);
+    return () => {
+      window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
+      window.removeEventListener(SW_READY_EVENT, onSwReady);
+    };
   }, [evaluate]);
 
   useEffect(() => {
@@ -249,19 +261,47 @@ export function PwaPushSubscribe() {
   );
 }
 
-/** 헤더 등에서 수동으로 알림 설정 열기 */
-export function PushNotifyButton({ className }: { className?: string }) {
-  const [hidden, setHidden] = useState(true);
+/** 헤더·전역 — 서버 푸시 설정이 켜져 있으면 항상 표시 (완료 상태만 숨김) */
+export function PushNotifyButton({
+  className,
+  fixed = false,
+}: {
+  className?: string;
+  fixed?: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    void getPushSetupState().then((s) => {
-      setHidden(s === "ready" || s === "server_off" || s === "unsupported");
-    });
+  const refresh = useCallback(() => {
+    void (async () => {
+      const config = await fetchPushConfig();
+      if (!config.enabled) {
+        setVisible(false);
+        return;
+      }
+      const state = await getPushSetupState();
+      setVisible(state !== "ready");
+    })();
   }, []);
 
-  if (hidden) return null;
+  useEffect(() => {
+    refresh();
+    const t1 = setTimeout(refresh, 1500);
+    const t2 = setTimeout(refresh, 5000);
+    window.addEventListener(SW_READY_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener(PUSH_PROMPT_OPEN_EVENT, refresh);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener(SW_READY_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, refresh);
+    };
+  }, [refresh]);
 
-  return (
+  if (!visible) return null;
+
+  const btn = (
     <button
       type="button"
       aria-label="업로드 알림 설정"
@@ -271,4 +311,17 @@ export function PushNotifyButton({ className }: { className?: string }) {
       <Bell className="h-5 w-5 text-pink-500" />
     </button>
   );
+
+  if (fixed) {
+    return (
+      <div
+        className="fixed right-4 z-[60]"
+        style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
+        {btn}
+      </div>
+    );
+  }
+
+  return btn;
 }
