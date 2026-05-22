@@ -76,6 +76,7 @@ export function MediaDetail({
   const isImage = media.type === "image";
   const hasVideoPreview = !!media.videoPreviewUrl;
   const canSwitchToOriginal =
+    media.type === "video" &&
     !!media.originalUrl &&
     hasVideoPreview &&
     media.originalUrl !== media.videoPreviewUrl;
