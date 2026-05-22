@@ -194,7 +194,7 @@ export function PinchZoomImage({
       )}
     >
       <div
-        className="relative will-change-transform"
+        className="relative flex max-h-[55vh] max-w-full items-center justify-center will-change-transform lg:max-h-[60vh]"
         style={{
           transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
           transformOrigin: "center center",
@@ -207,25 +207,33 @@ export function PinchZoomImage({
             alt={alt}
             draggable={false}
             className={cn(
-              "max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]",
+              "block max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]",
               originalReady &&
                 showOriginalLayer &&
-                "opacity-0 transition-opacity duration-200"
+                "invisible"
             )}
           />
         ) : null}
         {originalReady && originalSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={originalSrc}
-            alt={alt}
-            draggable={false}
-            className={cn(
-              "max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]",
-              showOriginalLayer &&
-                "absolute max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]"
-            )}
-          />
+          showOriginalLayer ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={originalSrc}
+                alt={alt}
+                draggable={false}
+                className="max-h-full max-w-full object-contain"
+              />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={originalSrc}
+              alt={alt}
+              draggable={false}
+              className="block max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]"
+            />
+          )
         ) : null}
       </div>
     </div>
