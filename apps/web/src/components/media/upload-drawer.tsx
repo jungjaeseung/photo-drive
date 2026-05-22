@@ -14,6 +14,7 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface UploadDrawerProps {
   items: UploadQueueItem[];
@@ -72,6 +73,12 @@ export function UploadDrawer({
   activeCount,
   totalCount,
 }: UploadDrawerProps) {
+  const openedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (open) openedAtRef.current = Date.now();
+  }, [open]);
+
   const summary =
     activeCount > 0
       ? `${activeCount}개 진행 중 · 전체 ${totalCount}개`
@@ -79,9 +86,23 @@ export function UploadDrawer({
         ? `전체 ${totalCount}개`
         : "";
 
+  if (items.length === 0) return null;
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="pb-[calc(var(--fab-bottom,1rem)+0.5rem)]">
+      <DrawerContent
+        className="pb-[calc(var(--bottom-nav-total,4rem)+0.75rem)]"
+        onPointerDownOutside={(e) => {
+          if (Date.now() - openedAtRef.current < 500) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          if (Date.now() - openedAtRef.current < 500) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DrawerHeader className="text-left">
           <DrawerTitle>업로드</DrawerTitle>
           {summary ? (

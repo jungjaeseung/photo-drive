@@ -5,7 +5,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 
 export const Drawer = ({
-  shouldScaleBackground = true,
+  shouldScaleBackground = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
@@ -19,29 +19,31 @@ export const DrawerTrigger = DrawerPrimitive.Trigger;
 export const DrawerPortal = DrawerPrimitive.Portal;
 export const DrawerClose = DrawerPrimitive.Close;
 
-export function DrawerOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Overlay>) {
+export const DrawerOverlay = React.forwardRef<
+  React.ElementRef<typeof DrawerPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
+>(function DrawerOverlay({ className, ...props }, ref) {
   return (
     <DrawerPrimitive.Overlay
-      className={cn("fixed inset-0 z-[110] bg-black/50", className)}
+      ref={ref}
+      className={cn("fixed inset-0 z-[200] bg-black/50", className)}
       {...props}
     />
   );
-}
+});
+DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
-export function DrawerContent({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+export const DrawerContent = React.forwardRef<
+  React.ElementRef<typeof DrawerPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
+>(function DrawerContent({ className, children, ...props }, ref) {
   return (
     <DrawerPortal>
       <DrawerOverlay />
       <DrawerPrimitive.Content
+        ref={ref}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-[110] mt-24 flex max-h-[85vh] flex-col rounded-t-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+          "fixed inset-x-0 bottom-0 z-[200] flex max-h-[85vh] flex-col rounded-t-xl border border-zinc-200 bg-white outline-none dark:border-zinc-800 dark:bg-zinc-950",
           className
         )}
         {...props}
@@ -51,7 +53,8 @@ export function DrawerContent({
       </DrawerPrimitive.Content>
     </DrawerPortal>
   );
-}
+});
+DrawerContent.displayName = "DrawerContent";
 
 export function DrawerHeader({
   className,

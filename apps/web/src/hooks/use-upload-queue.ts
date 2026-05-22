@@ -85,7 +85,8 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
       status: "pending",
     }));
     setItems((prev) => [...prev, ...newItems]);
-    setDrawerOpen(true);
+    // 파일 피커 닫힘 직후 pointer 이벤트가 outside-click으로 잡혀 Drawer가 바로 닫히는 것 방지
+    window.setTimeout(() => setDrawerOpen(true), 150);
   }, []);
 
   const openDrawer = useCallback(() => {
