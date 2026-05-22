@@ -110,9 +110,17 @@ export function GridActionBar({
 
   function downloadProgressLabel(): string {
     if (!downloadProgress) return "";
-    if (downloadProgress.phase === "compressing") return "압축 중…";
-    if (downloadProgress.percent != null) return `${downloadProgress.percent}%`;
-    return formatBytes(downloadProgress.loaded);
+    const partPrefix =
+      downloadProgress.totalParts && downloadProgress.totalParts > 1
+        ? `${downloadProgress.part ?? 1}/${downloadProgress.totalParts} `
+        : "";
+    if (downloadProgress.phase === "compressing") {
+      return `${partPrefix}압축 중…`;
+    }
+    if (downloadProgress.percent != null) {
+      return `${partPrefix}${downloadProgress.percent}%`;
+    }
+    return `${partPrefix}${formatBytes(downloadProgress.loaded)}`;
   }
 
   async function handleDeleteSelected() {

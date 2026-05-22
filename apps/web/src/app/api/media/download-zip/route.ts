@@ -8,7 +8,8 @@ import {
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 
-const MAX_FILES = 200;
+/** 요청당 최대 파일 수 (클라이언트는 100장 단위로 나눠 요청) */
+const MAX_FILES = 100;
 
 export const runtime = "nodejs";
 export const maxDuration = 300;

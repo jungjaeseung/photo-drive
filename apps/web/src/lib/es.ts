@@ -359,6 +359,30 @@ export async function listAlbums(): Promise<AlbumDocument[]> {
   });
 }
 
+const MAX_ALBUM_MEDIA_IDS = 10_000;
+
+/** 앨범에 속한 미디어 ID 목록 (다운로드용) */
+export async function listMediaIdsInAlbum(
+  albumId: string,
+  max = MAX_ALBUM_MEDIA_IDS
+): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | undefined;
+
+  while (ids.length < max) {
+    const { items, nextCursor, hasMore } = await searchMedia({
+      albumId,
+      cursor,
+      size: Math.min(100, max - ids.length),
+    });
+    ids.push(...items.map((doc) => doc.id));
+    if (!hasMore || !nextCursor) break;
+    cursor = nextCursor;
+  }
+
+  return ids;
+}
+
 export async function countMediaInAlbum(albumId: string): Promise<number> {
   const es = getEsClient();
   const result = await es.count({

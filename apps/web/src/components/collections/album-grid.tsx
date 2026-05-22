@@ -18,7 +18,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
+import { downloadAlbumAsZip } from "@/lib/download-zip";
+import { Download, FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -82,11 +83,15 @@ function SortableAlbumItem({
   reorderMode,
   onDelete,
   deletingId,
+  downloadingId,
+  onDownload,
 }: {
   album: AlbumGridItem;
   reorderMode: boolean;
   onDelete?: (albumId: string) => void | Promise<void>;
   deletingId: string | null;
+  downloadingId: string | null;
+  onDownload?: (album: AlbumGridItem) => void | Promise<void>;
 }) {
   const {
     attributes,
@@ -104,6 +109,8 @@ function SortableAlbumItem({
   };
 
   const isDeleting = deletingId === album.id;
+  const isDownloading = downloadingId === album.id;
+  const canDownload = album.mediaCount > 0;
 
   if (!reorderMode) {
     return (
@@ -130,6 +137,13 @@ function SortableAlbumItem({
     await onDelete(album.id);
   }
 
+  async function handleDownload(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isDownloading || !canDownload || !onDownload) return;
+    await onDownload(album);
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -138,7 +152,7 @@ function SortableAlbumItem({
     >
       <button
         type="button"
-        className="absolute left-1 top-1 z-10 flex h-8 w-8 touch-none items-center justify-center rounded-md bg-black/40 text-white"
+        className="absolute left-1 top-1 z-10 flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-md bg-black/40 text-white active:cursor-grabbing"
         aria-label="드래그하여 순서 변경"
         {...attributes}
         {...listeners}
@@ -150,13 +164,33 @@ function SortableAlbumItem({
           type="button"
           disabled={isDeleting}
           onClick={handleDelete}
-          className="absolute right-1 top-1 z-10 flex h-8 w-8 touch-none items-center justify-center rounded-md bg-black/40 text-white disabled:opacity-50"
+          className="absolute right-1 top-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
           aria-label={`${album.name} 앨범 삭제`}
         >
           {isDeleting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Trash2 className="h-4 w-4" />
+          )}
+        </button>
+      )}
+      {onDownload && (
+        <button
+          type="button"
+          disabled={!canDownload || isDownloading}
+          onClick={handleDownload}
+          className="absolute bottom-1 right-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-black/40 text-white hover:bg-black/55 disabled:opacity-50"
+          aria-label={`${album.name} 원본 ZIP 다운로드`}
+          title={
+            canDownload
+              ? `${album.name}.zip 다운로드`
+              : "항목이 없습니다"
+          }
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
           )}
         </button>
       )}
@@ -177,6 +211,7 @@ export function AlbumGrid({
   const [items, setItems] = useState(albums);
   const [columnCount, setColumnCount] = useState(columnCountProp ?? 3);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     setItems(albums);
@@ -214,6 +249,17 @@ export function AlbumGrid({
     });
   }
 
+  async function handleDownloadAlbum(album: AlbumGridItem) {
+    setDownloadingId(album.id);
+    try {
+      await downloadAlbumAsZip(album.id, album.name);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   async function handleDeleteAlbum(albumId: string) {
     if (!onDelete) return;
     setDeletingId(albumId);
@@ -248,7 +294,9 @@ export function AlbumGrid({
           album={album}
           reorderMode={reorderMode}
           onDelete={reorderMode ? handleDeleteAlbum : undefined}
+          onDownload={reorderMode ? handleDownloadAlbum : undefined}
           deletingId={deletingId}
+          downloadingId={downloadingId}
         />
       ))}
     </div>
