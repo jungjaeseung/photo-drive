@@ -127,6 +127,44 @@ export async function searchMedia(params: {
   return { items, nextCursor, hasMore };
 }
 
+/** 카테고리 썸네일용: ready 미디어 중 랜덤 1건 */
+export async function searchRandomReadyMedia(
+  type: "image" | "video",
+  options?: { excludeId?: string; seed?: number }
+): Promise<MediaDocument | null> {
+  const es = getEsClient();
+  const must: Record<string, unknown>[] = [
+    { term: { type } },
+    { term: { status: "ready" } },
+    { bool: { must_not: [{ exists: { field: "deletedAt" } }] } },
+  ];
+
+  if (options?.excludeId) {
+    must.push({
+      bool: { must_not: [{ term: { id: options.excludeId } }] },
+    });
+  }
+
+  const result = await es.search({
+    index: ES_INDEX_MEDIA,
+    body: {
+      size: 1,
+      query: {
+        function_score: {
+          query: { bool: { must } },
+          random_score: {
+            seed: options?.seed ?? Date.now(),
+          },
+        },
+      },
+    },
+  });
+
+  const hit = result.body.hits.hits[0];
+  if (!hit?._source) return null;
+  return hit._source as MediaDocument;
+}
+
 export async function getAlbumById(id: string): Promise<AlbumDocument | null> {
   const es = getEsClient();
   try {

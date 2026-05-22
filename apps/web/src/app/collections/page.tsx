@@ -3,6 +3,7 @@
 import { AlbumGrid, type AlbumGridItem } from "@/components/collections/album-grid";
 import { CategoryGrid } from "@/components/collections/category-grid";
 import { Button } from "@/components/ui/button";
+import { useCategoryPreviewRotation } from "@/hooks/use-category-preview-rotation";
 import { Loader2, Settings } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -10,8 +11,7 @@ export default function CollectionsPage() {
   const [albums, setAlbums] = useState<AlbumGridItem[]>([]);
   const [draftAlbums, setDraftAlbums] = useState<AlbumGridItem[]>([]);
   const [name, setName] = useState("");
-  const [photoThumb, setPhotoThumb] = useState<string | undefined>();
-  const [videoThumb, setVideoThumb] = useState<string | undefined>();
+  const { photoThumb, videoThumb } = useCategoryPreviewRotation();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
@@ -25,22 +25,9 @@ export default function CollectionsPage() {
     setAlbums(data.items ?? []);
   }, [base]);
 
-  const loadCategoryPreviews = useCallback(async () => {
-    const [photoRes, videoRes] = await Promise.all([
-      fetch(`${base}/api/media?type=image&size=1`),
-      fetch(`${base}/api/media?type=video&size=1`),
-    ]);
-    const photoData = await photoRes.json();
-    const videoData = await videoRes.json();
-    setPhotoThumb(photoData.items?.[0]?.thumbnailUrl);
-    setVideoThumb(videoData.items?.[0]?.thumbnailUrl);
-  }, [base]);
-
   useEffect(() => {
-    Promise.all([loadAlbums(), loadCategoryPreviews()]).finally(() =>
-      setLoading(false)
-    );
-  }, [loadAlbums, loadCategoryPreviews]);
+    loadAlbums().finally(() => setLoading(false));
+  }, [loadAlbums]);
 
   useEffect(() => {
     const refresh = () => {
