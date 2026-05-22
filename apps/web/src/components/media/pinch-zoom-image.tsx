@@ -14,6 +14,33 @@ function touchDistance(touches: TouchList): number {
   return Math.hypot(dx, dy);
 }
 
+function getPanLimits(
+  containerW: number,
+  containerH: number,
+  contentW: number,
+  contentH: number,
+  scale: number
+): { maxX: number; maxY: number } {
+  if (scale <= MIN_SCALE + 0.02 || contentW <= 0 || contentH <= 0) {
+    return { maxX: 0, maxY: 0 };
+  }
+  return {
+    maxX: Math.max(0, (contentW * scale - containerW) / (2 * scale)),
+    maxY: Math.max(0, (contentH * scale - containerH) / (2 * scale)),
+  };
+}
+
+function clampPan(
+  x: number,
+  y: number,
+  limits: { maxX: number; maxY: number }
+): { x: number; y: number } {
+  return {
+    x: Math.min(limits.maxX, Math.max(-limits.maxX, x)),
+    y: Math.min(limits.maxY, Math.max(-limits.maxY, y)),
+  };
+}
+
 interface PinchZoomImageProps {
   previewSrc?: string;
   originalSrc?: string;
@@ -34,11 +61,32 @@ export function PinchZoomImage({
   onSwipeNext,
 }: PinchZoomImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(MIN_SCALE);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
 
   const scaleRef = useRef(MIN_SCALE);
   const translateRef = useRef({ x: 0, y: 0 });
+
+  const applyClampedTranslate = useCallback((x: number, y: number) => {
+    const container = containerRef.current;
+    const content = transformRef.current;
+    if (!container || !content || scaleRef.current <= MIN_SCALE + 0.02) {
+      translateRef.current = { x: 0, y: 0 };
+      setTranslate({ x: 0, y: 0 });
+      return;
+    }
+    const limits = getPanLimits(
+      container.clientWidth,
+      container.clientHeight,
+      content.offsetWidth,
+      content.offsetHeight,
+      scaleRef.current
+    );
+    const next = clampPan(x, y, limits);
+    translateRef.current = next;
+    setTranslate(next);
+  }, []);
   const gestureHadMultiTouch = useRef(false);
   const pinchStartDistance = useRef<number | null>(null);
   const pinchStartScale = useRef(MIN_SCALE);
@@ -112,6 +160,11 @@ export function PinchZoomImage({
         if (next <= MIN_SCALE + 0.02) {
           translateRef.current = { x: 0, y: 0 };
           setTranslate({ x: 0, y: 0 });
+        } else {
+          applyClampedTranslate(
+            translateRef.current.x,
+            translateRef.current.y
+          );
         }
         return;
       }
@@ -122,12 +175,10 @@ export function PinchZoomImage({
         e.preventDefault();
         const dx = e.touches[0].clientX - panStart.current.x;
         const dy = e.touches[0].clientY - panStart.current.y;
-        const next = {
-          x: panStart.current.tx + dx,
-          y: panStart.current.ty + dy,
-        };
-        translateRef.current = next;
-        setTranslate(next);
+        applyClampedTranslate(
+          panStart.current.tx + dx,
+          panStart.current.ty + dy
+        );
       }
     };
 
@@ -139,11 +190,19 @@ export function PinchZoomImage({
         pinchStartDistance.current = null;
         panStart.current = null;
         swipeStart.current = null;
-        if (scaleRef.current <= MIN_SCALE + 0.02) resetTransform();
+        if (scaleRef.current <= MIN_SCALE + 0.02) {
+          resetTransform();
+        } else {
+          applyClampedTranslate(
+            translateRef.current.x,
+            translateRef.current.y
+          );
+        }
         return;
       }
 
       if (panStart.current) {
+        applyClampedTranslate(translateRef.current.x, translateRef.current.y);
         panStart.current = null;
         return;
       }
@@ -180,7 +239,7 @@ export function PinchZoomImage({
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [onSwipePrev, onSwipeNext, resetTransform]);
+  }, [onSwipePrev, onSwipeNext, resetTransform, applyClampedTranslate]);
 
   const showOriginalLayer =
     !!originalSrc && !!previewSrc && originalSrc !== previewSrc;
@@ -194,9 +253,10 @@ export function PinchZoomImage({
       )}
     >
       <div
+        ref={transformRef}
         className="relative flex max-h-[55vh] max-w-full items-center justify-center will-change-transform lg:max-h-[60vh]"
         style={{
-          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+          transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
           transformOrigin: "center center",
         }}
       >
