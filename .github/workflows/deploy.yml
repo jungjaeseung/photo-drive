@@ -22,11 +22,57 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: true
           command_timeout: 30m
+          env:
+            AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+            AUTH_URL: ${{ secrets.AUTH_URL }}
+            REGISTRATION_BASIC_AUTH_USER: ${{ secrets.REGISTRATION_BASIC_AUTH_USER }}
+            REGISTRATION_BASIC_AUTH_PASSWORD: ${{ secrets.REGISTRATION_BASIC_AUTH_PASSWORD }}
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+            VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+            PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
+          envs: >-
+            AUTH_SECRET,
+            AUTH_URL,
+            REGISTRATION_BASIC_AUTH_USER,
+            REGISTRATION_BASIC_AUTH_PASSWORD,
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+            VAPID_PUBLIC_KEY,
+            VAPID_PRIVATE_KEY,
+            VAPID_SUBJECT,
+            PUBLIC_APP_URL,
+            STORAGE_HOST_PATH
           script: |
             set -euo pipefail
             export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
             cd ~/source/photo-drive
             git pull origin main
+
+            # 서버 .env + GitHub Secrets(비어 있지 않으면 Secrets 우선)
+            if [ -f .env ]; then
+              set -a
+              # shellcheck disable=SC1091
+              . ./.env
+              set +a
+            fi
+            for var in AUTH_SECRET AUTH_URL REGISTRATION_BASIC_AUTH_USER REGISTRATION_BASIC_AUTH_PASSWORD NEXT_PUBLIC_VAPID_PUBLIC_KEY VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY VAPID_SUBJECT PUBLIC_APP_URL; do
+              eval "val=\${$var:-}"
+              if [ -n "$val" ]; then
+                export "$var=$val"
+              fi
+            done
+
             export STORAGE_HOST_PATH="${STORAGE_HOST_PATH:-/mnt/extra/photo-drive}"
+            export AUTH_TRUST_HOST=true
+
+            if [ -z "${AUTH_SECRET:-}" ]; then
+              echo "ERROR: AUTH_SECRET is not set (GitHub Secret or ~/source/photo-drive/.env)"
+              exit 1
+            fi
+            if [ -z "${REGISTRATION_BASIC_AUTH_USER:-}" ] || [ -z "${REGISTRATION_BASIC_AUTH_PASSWORD:-}" ]; then
+              echo "WARN: REGISTRATION_BASIC_AUTH_* not set — /photos/login/new will return 503"
+            fi
+
             docker compose build
             docker compose up -d app worker media-nginx

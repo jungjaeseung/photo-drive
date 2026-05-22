@@ -274,6 +274,13 @@ Repository → Settings → Secrets and variables → Actions:
 | `SSH_USER` | `jung` |
 | `SSH_PRIVATE_KEY` | `photo-drive-deploy` **개인키 전체** |
 | `SSH_PORT` | **`2222`** (홈서버 SSH 포트, 22가 아니면 필수) |
+| `AUTH_SECRET` | `openssl rand -base64 32` 결과 |
+| `REGISTRATION_BASIC_AUTH_USER` | 회원가입 페이지 Basic Auth 아이디 (**이름 정확히**) |
+| `REGISTRATION_BASIC_AUTH_PASSWORD` | 회원가입 페이지 Basic Auth 비밀번호 |
+
+선택: `AUTH_URL`, `PUBLIC_APP_URL`, `VAPID_*`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — 없으면 서버 `~/source/photo-drive/.env` 사용
+
+GitHub Secret 이름은 **대소문자까지** 위와 동일해야 합니다. 등록만 하고 배포 워크플로에 넘기지 않으면 앱 컨테이너에 값이 비어 `Registration is not configured`가 납니다.
 
 연결 테스트:
 
@@ -286,9 +293,9 @@ ssh -i ~/.ssh/photo-drive-deploy -p 2222 jung@59.13.92.28 "echo ok"
 ```bash
 cd ~/source/photo-drive
 git pull origin main
-export STORAGE_HOST_PATH=/mnt/extra/photo-drive
+# GitHub Secrets 또는 .env 에서 AUTH_SECRET, REGISTRATION_BASIC_AUTH_* 등 로드
 docker compose build
-docker compose up -d app worker
+docker compose up -d app worker media-nginx
 ```
 
 worker도 같이 올리려면 워크플로 마지막 줄을 `docker compose up -d app worker`로 바꾸세요.
