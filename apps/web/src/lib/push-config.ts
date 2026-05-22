@@ -19,10 +19,14 @@ export async function fetchPushConfig(): Promise<{
   if (cached) return cached;
 
   const base = getClientBasePath();
-  const url = `${base}/api/push/config`;
+  const url = new URL(
+    `${base}/api/push/config`,
+    typeof window !== "undefined" ? window.location.origin : "http://localhost"
+  );
+  url.searchParams.set("_", String(Date.now()));
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url.toString(), { cache: "no-store" });
     if (!res.ok) {
       cached = { enabled: false, vapidPublicKey: null };
       return cached;

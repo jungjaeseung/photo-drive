@@ -1,6 +1,5 @@
 "use client";
 
-import { PushNotifyButton } from "@/components/pwa/pwa-push-subscribe";
 import { GridActionBar } from "@/components/media/grid-action-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
@@ -32,10 +31,7 @@ export default function LibraryPage() {
   return (
     <div className="flex h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-xl font-bold">보관함</h1>
-          <PushNotifyButton className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800" />
-        </div>
+        <h1 className="text-xl font-bold">보관함</h1>
         <p className="text-xs text-zinc-500">
           {gridMode.mode === "select" && gridMode.selectedCount > 0
             ? `${gridMode.selectedCount}개 선택`

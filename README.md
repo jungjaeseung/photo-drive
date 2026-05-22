@@ -78,6 +78,9 @@ docker compose up -d app worker
 
 브라우저에서 확인: `https://…/photos/api/push/config` → `{"enabled":true,"vapidPublicKey":"…"}` 이어야 함.
 
+**PWA에서 주소 확인 (iPhone)**  
+홈 화면 앱에는 주소창이 없습니다. 앱 **오른쪽 위 분홍 종 버튼** → 「현재 주소」「경로」에 `/photos` 가 포함되는지 확인하세요.
+
 ## 로컬 개발
 
 ```bash
