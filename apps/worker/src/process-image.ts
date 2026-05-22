@@ -4,7 +4,9 @@ import {
   getMediaDir,
   getRelativeMediaPath,
   MEDIUM_MAX_SIZE,
+  MEDIUM_WEBP_QUALITY,
   THUMB_MAX_SIZE,
+  THUMB_WEBP_QUALITY,
   type MediaDocument,
 } from "@photo-drive/shared";
 import exifr from "exifr";
@@ -13,7 +15,16 @@ import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
 import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
-export async function processImage(mediaId: string, storageRoot?: string): Promise<void> {
+export interface ProcessImageOptions {
+  /** 기본 true. 일괄 재생성 스크립트에서는 false */
+  notify?: boolean;
+}
+
+export async function processImage(
+  mediaId: string,
+  storageRoot?: string,
+  options: ProcessImageOptions = {}
+): Promise<void> {
   const root = storageRoot ?? getStorageRoot();
   const doc = await getMediaById(mediaId);
   if (!doc || doc.type !== "image") {
@@ -46,7 +57,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 80 })
+      .webp({ quality: THUMB_WEBP_QUALITY })
       .toFile(thumbPath);
 
     await image
@@ -55,7 +66,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 85 })
+      .webp({ quality: MEDIUM_WEBP_QUALITY })
       .toFile(mediumPath);
 
     const thumbRel = getRelativeMediaPath(uploadedAt, mediaId, "thumb.webp");
@@ -77,7 +88,9 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
     );
 
     await updateMedia(mediaId, snapshot);
-    scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
+    if (options.notify !== false) {
+      scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
+    }
   } catch (error) {
     await updateMedia(mediaId, {
       status: "failed",

@@ -30,6 +30,52 @@ export async function updateMedia(
   });
 }
 
+export async function scrollReadyImageIds(): Promise<string[]> {
+  const client = getClient();
+  const ids: string[] = [];
+  const scrollMs = "5m";
+
+  let response = await client.search({
+    index: ES_INDEX_MEDIA,
+    scroll: scrollMs,
+    size: 200,
+    body: {
+      query: {
+        bool: {
+          must: [
+            { term: { type: "image" } },
+            { term: { status: "ready" } },
+          ],
+          must_not: [{ exists: { field: "deletedAt" } }],
+        },
+      },
+      _source: false,
+    },
+  });
+
+  let scrollId = response.body._scroll_id as string | undefined;
+
+  while (true) {
+    const hits = response.body.hits?.hits ?? [];
+    for (const hit of hits) {
+      if (hit._id) ids.push(hit._id);
+    }
+    if (hits.length === 0) break;
+
+    response = await client.scroll({
+      scroll_id: scrollId,
+      scroll: scrollMs,
+    });
+    scrollId = response.body._scroll_id as string | undefined;
+  }
+
+  if (scrollId) {
+    await client.clearScroll({ scroll_id: scrollId }).catch(() => {});
+  }
+
+  return ids;
+}
+
 export async function deleteMediaDoc(id: string): Promise<void> {
   await getClient().delete({
     index: ES_INDEX_MEDIA,

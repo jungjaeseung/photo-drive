@@ -171,6 +171,20 @@ pnpm --filter @photo-drive/web es:reindex
 
 **주의:** `docker volume prune` / `docker system prune -a --volumes`는 **redis·nginx 캐시 볼륨**을 지울 수 있습니다. `js-es` 데이터까지 지웠다면 위 reindex가 필요합니다.
 
+**4) 이미지 thumb / medium WebP 품질 변경 후 기존 파일 재생성**
+
+새 업로드는 worker가 자동 반영합니다. 이미 올라간 사진은 아래 일괄 스크립트로 `thumb.webp`·`medium.webp`만 다시 만듭니다 (원본 유지, 푸시 알림 없음).
+
+```bash
+cd ~/source/photo-drive
+export STORAGE_ROOT=/mnt/extra/photo-drive
+export ELASTICSEARCH_URL=http://127.0.0.1:9200
+pnpm install
+pnpm --filter @photo-drive/worker regenerate:images -- --dry-run   # 건수 확인
+pnpm --filter @photo-drive/worker regenerate:images              # 전체 실행
+# 테스트: pnpm --filter @photo-drive/worker regenerate:images -- --limit 10
+```
+
 ## GitHub Actions 배포 (main push)
 
 `main` 브랜치에 push하면 홈서버에 SSH로 배포합니다.
