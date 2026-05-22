@@ -74,6 +74,17 @@ textarea,
   user-select: text;
 }
 
+/* iOS Safari: input 포커스 시 자동 확대 방지 (font-size < 16px 일 때 발생) */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(
+      [type="hidden"]
+    ),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 img {
   -webkit-touch-callout: none;
   -webkit-user-drag: none;
