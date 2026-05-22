@@ -65,6 +65,7 @@ function processingIdsToResolve(
 interface UseMediaListOptions {
   type?: "image" | "video";
   albumId?: string;
+  favoritesOnly?: boolean;
 }
 
 export function useMediaList(options: UseMediaListOptions = {}) {
@@ -91,6 +92,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         const opts = optionsRef.current;
         if (opts.type) params.set("type", opts.type);
         if (opts.albumId) params.set("albumId", opts.albumId);
+        if (opts.favoritesOnly) params.set("favoritesOnly", "1");
         if (nextCursor) params.set("cursor", nextCursor);
         params.set("size", "60");
 
@@ -144,7 +146,21 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     setCursor(undefined);
     setHasMore(true);
     fetchPage(undefined, false);
-  }, [options.type, options.albumId, fetchPage]);
+  }, [options.type, options.albumId, options.favoritesOnly, fetchPage]);
+
+  const setItemFavorited = useCallback(
+    (mediaId: string, favorited: boolean) => {
+      setItems((prev) => {
+        if (optionsRef.current.favoritesOnly && !favorited) {
+          return prev.filter((i) => i.id !== mediaId);
+        }
+        return prev.map((i) =>
+          i.id === mediaId ? { ...i, favorited } : i
+        );
+      });
+    },
+    []
+  );
 
   const loadMore = useCallback(() => {
     if (!hasMore || loading || !cursor) return;
@@ -207,5 +223,6 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     refresh,
     prependProcessingItem,
     loadItemsForDateKey,
+    setItemFavorited,
   };
 }

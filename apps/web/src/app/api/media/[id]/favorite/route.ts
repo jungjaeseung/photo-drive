@@ -1,9 +1,9 @@
 import { requireSession } from "@/lib/require-session";
-import { deleteMediaItems } from "@/lib/media-delete";
 import { getMediaById } from "@/lib/es";
-import { isFavorite } from "@/lib/es-favorites";
-import { getMediaAssetUrl } from "@/lib/media-url";
+import { addFavorite, isFavorite, removeFavorite } from "@/lib/es-favorites";
 import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 export async function GET(
   _request: NextRequest,
@@ -19,23 +19,14 @@ export async function GET(
   }
 
   const favorited = await isFavorite(session.user.id, id);
-
-  return NextResponse.json({
-    ...doc,
-    thumbnailUrl: getMediaAssetUrl(doc, "thumb"),
-    previewUrl: getMediaAssetUrl(doc, "medium"),
-    originalUrl: getMediaAssetUrl(doc, "original"),
-    posterUrl: getMediaAssetUrl(doc, "poster"),
-    videoPreviewUrl: getMediaAssetUrl(doc, "preview"),
-    favorited,
-  });
+  return NextResponse.json({ favorited });
 }
 
-export async function DELETE(
+export async function PUT(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { unauthorized } = await requireSession();
+  const { session, unauthorized } = await requireSession();
   if (unauthorized) return unauthorized;
 
   const { id } = await params;
@@ -44,10 +35,18 @@ export async function DELETE(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const { deleted } = await deleteMediaItems([id]);
-  if (deleted === 0) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
+  await addFavorite(session.user.id, id);
+  return NextResponse.json({ favorited: true });
+}
 
-  return NextResponse.json({ ok: true, mediaId: id });
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { session, unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
+  const { id } = await params;
+  await removeFavorite(session.user.id, id);
+  return NextResponse.json({ favorited: false });
 }

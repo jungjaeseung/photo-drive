@@ -11,6 +11,7 @@ import { useEffect, useRef } from "react";
 interface MediaViewerLayerProps {
   viewer: MediaViewer;
   onDeleted?: () => void;
+  onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
   albumId?: string;
   albumCoverMediaId?: string;
   onAlbumCoverChange?: (coverMediaId: string) => void;
@@ -19,6 +20,7 @@ interface MediaViewerLayerProps {
 export function MediaViewerLayer({
   viewer,
   onDeleted,
+  onFavoritedChange,
   albumId,
   albumCoverMediaId,
   onAlbumCoverChange,
@@ -123,6 +125,7 @@ export function MediaViewerLayer({
       onNext={viewer.goNext}
       hasPrev={viewer.hasNav && !!viewer.prevId}
       hasNext={viewer.hasNav && !!viewer.nextId}
+      onFavoritedChange={onFavoritedChange}
     />
   );
 }

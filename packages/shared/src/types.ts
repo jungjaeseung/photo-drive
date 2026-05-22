@@ -24,7 +24,10 @@ export interface MediaDocument {
   takenAtDateKst?: string;
   uploadedAt: string;
   albumIds: string[];
+  /** @deprecated 사용자별 즐겨찾기는 photo-drive-favorites 인덱스 사용 */
   favorite: boolean;
+  uploadedByUserId?: string;
+  uploadedByName?: string;
   exif?: Record<string, unknown>;
   deletedAt?: string;
   codec?: string;
@@ -40,6 +43,12 @@ export interface UserDocument {
   name: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FavoriteDocument {
+  userId: string;
+  mediaId: string;
+  createdAt: string;
 }
 
 export interface AlbumDocument {

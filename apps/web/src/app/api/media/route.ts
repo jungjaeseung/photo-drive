@@ -1,11 +1,12 @@
 import { requireSession } from "@/lib/require-session";
 import { searchMedia } from "@/lib/es";
+import { getFavoritedAmong, searchFavoritedMedia } from "@/lib/es-favorites";
 import { getMediaAssetUrl } from "@/lib/media-url";
 import { sortMediaItems } from "@/lib/media-sort";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const { unauthorized } = await requireSession();
+  const { session, unauthorized } = await requireSession();
   if (unauthorized) return unauthorized;
 
   const { searchParams } = request.nextUrl;
@@ -13,8 +14,23 @@ export async function GET(request: NextRequest) {
   const albumId = searchParams.get("albumId") ?? undefined;
   const cursor = searchParams.get("cursor") ?? undefined;
   const size = parseInt(searchParams.get("size") ?? "50", 10);
+  const favoritesOnly = searchParams.get("favoritesOnly") === "1";
 
-  const result = await searchMedia({ type, albumId, cursor, size });
+  const result = favoritesOnly
+    ? await searchFavoritedMedia({
+        userId: session.user.id,
+        type,
+        cursor,
+        size,
+      })
+    : await searchMedia({ type, albumId, cursor, size });
+
+  const favoritedSet = favoritesOnly
+    ? new Set(result.items.map((d) => d.id))
+    : await getFavoritedAmong(
+        session.user.id,
+        result.items.map((d) => d.id)
+      );
 
   const items = sortMediaItems(
     result.items.map((doc) => ({
@@ -22,6 +38,7 @@ export async function GET(request: NextRequest) {
       thumbnailUrl: getMediaAssetUrl(doc, "thumb"),
       previewUrl: getMediaAssetUrl(doc, "medium"),
       originalUrl: getMediaAssetUrl(doc, "original"),
+      favorited: favoritedSet.has(doc.id),
     }))
   );
 

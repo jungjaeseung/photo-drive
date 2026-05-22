@@ -11,6 +11,7 @@ import {
   CloudDownload,
   Download,
   FolderPlus,
+  Heart,
   ImageIcon,
   Trash2,
   X,
@@ -23,6 +24,7 @@ import {
   prefetchNeighborOriginals,
 } from "@/lib/media-prefetch";
 import { prefetchMediaImages } from "@/lib/media-image-cache";
+import { setFavorite } from "@/lib/favorite-api";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface MediaDetailData {
@@ -38,6 +40,7 @@ export interface MediaDetailData {
   width?: number;
   height?: number;
   duration?: number;
+  favorited?: boolean;
 }
 
 interface MediaDetailProps {
@@ -55,6 +58,7 @@ interface MediaDetailProps {
   albumId?: string;
   albumCoverMediaId?: string;
   onSetAlbumCover?: () => void | Promise<void>;
+  onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
 }
 
 export function MediaDetail({
@@ -72,7 +76,9 @@ export function MediaDetail({
   albumId,
   albumCoverMediaId,
   onSetAlbumCover,
+  onFavoritedChange,
 }: MediaDetailProps) {
+  const [favorited, setFavorited] = useState(!!media.favorited);
   const [originalReady, setOriginalReady] = useState(false);
   const [originalLoading, setOriginalLoading] = useState(false);
   const [playOriginalVideo, setPlayOriginalVideo] = useState(false);
@@ -96,6 +102,10 @@ export function MediaDetail({
   useEffect(() => {
     setPlayOriginalVideo(false);
   }, [media.id]);
+
+  useEffect(() => {
+    setFavorited(!!media.favorited);
+  }, [media.id, media.favorited]);
 
   const showOriginalLayer =
     isImage && !!media.originalUrl && media.originalUrl !== previewSrc;
@@ -388,14 +398,39 @@ export function MediaDetail({
               </Button>
             )}
             {media.id && media.status !== "processing" && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setAlbumPickerOpen(true)}
-              >
-                <FolderPlus className="h-4 w-4" />
-                앨범 추가
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setAlbumPickerOpen(true)}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                  앨범 추가
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={favorited ? "즐겨찾기 해제" : "즐겨찾기"}
+                  onClick={() => {
+                    const next = !favorited;
+                    setFavorited(next);
+                    void setFavorite(media.id, next)
+                      .then((ok) => {
+                        setFavorited(ok);
+                        onFavoritedChange?.(media.id, ok);
+                      })
+                      .catch(() => setFavorited(favorited));
+                  }}
+                >
+                  <Heart
+                    className={
+                      favorited
+                        ? "h-4 w-4 fill-red-500 text-red-500"
+                        : "h-4 w-4"
+                    }
+                  />
+                </Button>
+              </>
             )}
           </div>
         </div>

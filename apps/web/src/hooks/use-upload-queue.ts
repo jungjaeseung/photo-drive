@@ -4,6 +4,7 @@ import type { MediaGridItem } from "@/components/media/media-grid";
 import { fetchMediaByIds } from "@/lib/media-by-id";
 import { buildProcessingGridItem } from "@/lib/upload-client";
 import { uploadMediaFile } from "@/lib/upload-xhr";
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -54,6 +55,8 @@ interface UseUploadQueueOptions {
 }
 
 export function useUploadQueue(options: UseUploadQueueOptions = {}) {
+  const { data: session } = useSession();
+  const uploaderName = session?.user?.name?.trim() || undefined;
   const [items, setItems] = useState<UploadQueueItem[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const itemsRef = useRef(items);
@@ -267,5 +270,6 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
     openDrawer,
     activeCount,
     totalCount,
+    uploaderName,
   };
 }

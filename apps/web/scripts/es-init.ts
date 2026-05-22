@@ -4,6 +4,7 @@ import {
   ES_INDEX_MEDIA,
   ES_INDEX_PUSH_SUBSCRIPTIONS,
   ES_INDEX_USERS,
+  ES_INDEX_FAVORITES,
 } from "@photo-drive/shared";
 
 const url = process.env.ELASTICSEARCH_URL ?? "http://localhost:9200";
@@ -86,11 +87,20 @@ const userMappings = {
   },
 };
 
+const favoriteMappings = {
+  properties: {
+    userId: { type: "keyword" },
+    mediaId: { type: "keyword" },
+    createdAt: { type: "date" },
+  },
+};
+
 async function main() {
   await ensureIndex(ES_INDEX_MEDIA, mediaMappings);
   await ensureIndex(ES_INDEX_ALBUMS, albumMappings);
   await ensureIndex(ES_INDEX_PUSH_SUBSCRIPTIONS, pushSubscriptionMappings);
   await ensureIndex(ES_INDEX_USERS, userMappings);
+  await ensureIndex(ES_INDEX_FAVORITES, favoriteMappings);
   console.log("Elasticsearch indices ready");
 }
 

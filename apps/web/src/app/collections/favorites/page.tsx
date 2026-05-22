@@ -7,19 +7,16 @@ import { useMediaGridInteraction } from "@/hooks/use-media-grid-interaction";
 import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
-export default function PhotosOnlyPage() {
+export default function FavoritesPage() {
   const {
     items,
     loading,
     hasMore,
     loadMore,
     refresh,
-    prependProcessingItem,
     loadItemsForDateKey,
     setItemFavorited,
-  } = useMediaList({
-    type: "image",
-  });
+  } = useMediaList({ favoritesOnly: true });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
     useMediaGridInteraction({ loadItemsForDateKey });
@@ -27,7 +24,7 @@ export default function PhotosOnlyPage() {
   return (
     <div className="flex h-dvh flex-col">
       <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
-        <h1 className="text-xl font-bold">사진</h1>
+        <h1 className="text-xl font-bold">즐겨찾기</h1>
         {gridMode.mode === "select" && gridMode.selectedCount > 0 && (
           <p className="text-xs text-zinc-500">
             {gridMode.selectedCount}개 선택
@@ -35,32 +32,34 @@ export default function PhotosOnlyPage() {
         )}
       </header>
       <div className="flex-1 overflow-hidden">
-        <MediaGrid
-          items={items}
-          columnCount={4}
-          mode={gridMode.mode}
-          selectedIds={gridMode.selectedIds}
-          onSelect={(item) => viewer.select(item.id)}
-          onToggleSelect={gridMode.toggleSelect}
-          onSelectMany={gridMode.selectMany}
-          onDeselectMany={gridMode.deselectMany}
-          onToggleDateGroup={handleToggleDateGroup}
-          loadingDateKey={loadingDateKey}
-          onLongPress={handleLongPress}
-          onFavoritedChange={setItemFavorited}
-          hasMore={hasMore}
-          loadingMore={loading}
-          onLoadMore={loadMore}
-        />
+        {items.length === 0 && !loading ? (
+          <div className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
+            즐겨찾기한 사진·동영상이 없습니다
+          </div>
+        ) : (
+          <MediaGrid
+            items={items}
+            columnCount={4}
+            mode={gridMode.mode}
+            selectedIds={gridMode.selectedIds}
+            onSelect={(item) => viewer.select(item.id)}
+            onToggleSelect={gridMode.toggleSelect}
+            onSelectMany={gridMode.selectMany}
+            onDeselectMany={gridMode.deselectMany}
+            onToggleDateGroup={handleToggleDateGroup}
+            loadingDateKey={loadingDateKey}
+            onLongPress={handleLongPress}
+            onFavoritedChange={setItemFavorited}
+            hasMore={hasMore}
+            loadingMore={loading}
+            onLoadMore={loadMore}
+          />
+        )}
       </div>
       <GridActionBar
         mode={gridMode.mode}
         onModeChange={gridMode.setMode}
         selectedIds={gridMode.selectedIds}
-        showUpload
-        onItemUploaded={(item) => {
-          if (item.type === "image") prependProcessingItem(item);
-        }}
         onUploaded={refresh}
         onAlbumAdded={refresh}
         onDeleted={refresh}

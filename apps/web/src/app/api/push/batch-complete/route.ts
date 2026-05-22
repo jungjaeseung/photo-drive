@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireSession();
+    const { session, unauthorized } = await requireSession();
   if (unauthorized) return unauthorized;
 
   try {
@@ -25,7 +25,8 @@ export async function POST(request: Request) {
       );
     }
 
-    await finalizeUploadBatch(batchId, count);
+    const uploaderName = session.user.name?.trim() || undefined;
+    await finalizeUploadBatch(batchId, count, uploaderName);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("push batch-complete error", error);

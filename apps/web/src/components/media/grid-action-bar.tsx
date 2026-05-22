@@ -57,6 +57,7 @@ export function GridActionBar({
     openDrawer,
     activeCount,
     totalCount,
+    uploaderName,
   } = useUploadQueue({ onItemUploaded, onUploaded });
   const uploadError = uploadItems.find((i) => i.status === "error")?.errorMessage ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -278,6 +279,7 @@ export function GridActionBar({
         onOpenChange={setDrawerOpen}
         activeCount={activeCount}
         totalCount={totalCount}
+        uploaderName={uploaderName}
       />
 
       <AlbumPickerDialog

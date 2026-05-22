@@ -8,6 +8,7 @@ import {
   clearBatchKeys,
   getBatchExpected,
   getBatchReadyCount,
+  getBatchUploaderName,
   setBatchExpectedCount,
   tryClaimBatchSend,
 } from "./push-batch-redis.js";
@@ -39,20 +40,27 @@ function appOrigin(): string {
   return (process.env.PUBLIC_APP_URL ?? "").replace(/\/$/, "");
 }
 
-function notificationPayload(count: number): string {
+function notificationPayload(count: number, uploaderName?: string): string {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/photos";
   const root = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
   const origin = appOrigin();
   const prefix = origin || "";
+  const name = uploaderName?.trim();
+  const body = name
+    ? `${name} 님이 ${count}개의 업로드를 하였습니다.`
+    : `${count}개의 업로드를 하였습니다.`;
   return JSON.stringify({
     title: "업로드 완료",
-    body: `${count}개의 파일이 업로드 되었습니다.`,
+    body,
     url: `${prefix}${root}/`,
     icon: `${prefix}${root}/icons/icon-192.png`,
   });
 }
 
-async function sendPushToAllDevices(count: number): Promise<void> {
+async function sendPushToAllDevices(
+  count: number,
+  uploaderName?: string
+): Promise<void> {
   if (!ensureVapid()) return;
 
   const records = await listPushSubscriptions();
@@ -63,7 +71,7 @@ async function sendPushToAllDevices(count: number): Promise<void> {
     return;
   }
 
-  const payload = notificationPayload(count);
+  const payload = notificationPayload(count, uploaderName);
   let ok = 0;
   let fail = 0;
 
@@ -114,17 +122,19 @@ async function tryFlushBatch(batchId: string): Promise<void> {
   const claimed = await tryClaimBatchSend(batchId);
   if (!claimed) return;
 
-  await sendPushToAllDevices(expected);
+  const uploaderName = (await getBatchUploaderName(batchId)) ?? undefined;
+  await sendPushToAllDevices(expected, uploaderName);
   await clearBatchKeys(batchId);
 }
 
 /** notifyUploadBatch job — 클라이언트가 배치 종료 시 기대 건수 전달 */
 export async function finalizeUploadBatch(
   batchId: string,
-  expectedCount: number
+  expectedCount: number,
+  uploaderName?: string
 ): Promise<void> {
   if (expectedCount <= 0) return;
-  await setBatchExpectedCount(batchId, expectedCount);
+  await setBatchExpectedCount(batchId, expectedCount, uploaderName);
   await tryFlushBatch(batchId);
 }
 

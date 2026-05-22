@@ -25,6 +25,7 @@ export interface MediaGridItem {
   sortAt?: string;
   exif?: Record<string, unknown>;
   duration?: number;
+  favorited?: boolean;
 }
 
 interface MediaGridProps {
@@ -40,6 +41,7 @@ interface MediaGridProps {
   onToggleDateGroup?: (dateKey: string, loadedIds: string[]) => void;
   loadingDateKey?: string | null;
   onLongPress?: (item: MediaGridItem) => void;
+  onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -82,6 +84,7 @@ export function MediaGrid({
   onToggleDateGroup,
   loadingDateKey = null,
   onLongPress,
+  onFavoritedChange,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
@@ -281,6 +284,7 @@ export function MediaGrid({
                       onSelect={onSelect}
                       onToggleSelect={onToggleSelect}
                       onLongPress={onLongPress}
+                      onFavoritedChange={onFavoritedChange}
                     />
                   ))}
                 </div>

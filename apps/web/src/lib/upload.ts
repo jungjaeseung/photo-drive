@@ -59,6 +59,8 @@ export function buildInitialMediaDoc(params: {
   uploadedAt: Date;
   fileLastModified?: number;
   uploadBatchId?: string;
+  uploadedByUserId?: string;
+  uploadedByName?: string;
 }): MediaDocument {
   const now = params.uploadedAt.toISOString();
   const takenAt = takenAtFromFileLastModified(
@@ -89,6 +91,12 @@ export function buildInitialMediaDoc(params: {
     favorite: false,
     ...(params.uploadBatchId
       ? { uploadBatchId: params.uploadBatchId }
+      : {}),
+    ...(params.uploadedByUserId
+      ? { uploadedByUserId: params.uploadedByUserId }
+      : {}),
+    ...(params.uploadedByName
+      ? { uploadedByName: params.uploadedByName }
       : {}),
   };
 }

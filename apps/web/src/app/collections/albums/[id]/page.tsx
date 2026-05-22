@@ -14,10 +14,17 @@ import { useCallback, useEffect, useState } from "react";
 export default function AlbumDetailPage() {
   const params = useParams();
   const albumId = params.id as string;
-  const { items, loading, hasMore, loadMore, refresh, loadItemsForDateKey } =
-    useMediaList({
-      albumId,
-    });
+  const {
+    items,
+    loading,
+    hasMore,
+    loadMore,
+    refresh,
+    loadItemsForDateKey,
+    setItemFavorited,
+  } = useMediaList({
+    albumId,
+  });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
     useMediaGridInteraction({ loadItemsForDateKey });
@@ -69,6 +76,7 @@ export default function AlbumDetailPage() {
           onToggleDateGroup={handleToggleDateGroup}
           loadingDateKey={loadingDateKey}
           onLongPress={handleLongPress}
+          onFavoritedChange={setItemFavorited}
           hasMore={hasMore}
           loadingMore={loading}
           onLoadMore={loadMore}
@@ -95,6 +103,7 @@ export default function AlbumDetailPage() {
         onAlbumCoverChange={(coverMediaId) => {
           setAlbumCoverMediaId(coverMediaId);
         }}
+        onFavoritedChange={setItemFavorited}
       />
     </div>
   );

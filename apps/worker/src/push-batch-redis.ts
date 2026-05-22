@@ -18,6 +18,7 @@ function keys(batchId: string) {
     ready: `${p}:ready`,
     expected: `${p}:expected`,
     sent: `${p}:sent`,
+    uploaderName: `${p}:uploaderName`,
   };
 }
 
@@ -33,11 +34,22 @@ export async function addBatchReadyItem(
 
 export async function setBatchExpectedCount(
   batchId: string,
-  count: number
+  count: number,
+  uploaderName?: string
 ): Promise<void> {
   const k = keys(batchId);
   const r = getRedis();
   await r.set(k.expected, String(count), "EX", BATCH_TTL_SEC);
+  if (uploaderName?.trim()) {
+    await r.set(k.uploaderName, uploaderName.trim(), "EX", BATCH_TTL_SEC);
+  }
+}
+
+export async function getBatchUploaderName(
+  batchId: string
+): Promise<string | null> {
+  const raw = await getRedis().get(keys(batchId).uploaderName);
+  return raw?.trim() ? raw.trim() : null;
 }
 
 export async function getBatchReadyCount(batchId: string): Promise<number> {
@@ -54,7 +66,7 @@ export async function tryClaimBatchSend(batchId: string): Promise<boolean> {
 export async function clearBatchKeys(batchId: string): Promise<void> {
   const k = keys(batchId);
   const r = getRedis();
-  await r.del(k.ready, k.expected, k.sent);
+  await r.del(k.ready, k.expected, k.sent, k.uploaderName);
 }
 
 export async function getBatchExpected(

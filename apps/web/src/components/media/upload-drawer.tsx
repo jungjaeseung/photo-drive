@@ -22,6 +22,7 @@ interface UploadDrawerProps {
   onOpenChange: (open: boolean) => void;
   activeCount: number;
   totalCount: number;
+  uploaderName?: string;
 }
 
 function statusLabel(item: UploadQueueItem): string {
@@ -72,6 +73,7 @@ export function UploadDrawer({
   onOpenChange,
   activeCount,
   totalCount,
+  uploaderName,
 }: UploadDrawerProps) {
   const openedAtRef = useRef(0);
 
@@ -106,7 +108,12 @@ export function UploadDrawer({
         <DrawerHeader className="text-left">
           <DrawerTitle>업로드</DrawerTitle>
           {summary ? (
-            <DrawerDescription>{summary}</DrawerDescription>
+            <DrawerDescription>
+              {summary}
+              {uploaderName ? ` · ${uploaderName}` : ""}
+            </DrawerDescription>
+          ) : uploaderName ? (
+            <DrawerDescription>{uploaderName}</DrawerDescription>
           ) : null}
         </DrawerHeader>
 

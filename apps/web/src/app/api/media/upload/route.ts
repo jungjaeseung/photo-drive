@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireSession();
+  const { session, unauthorized } = await requireSession();
   if (unauthorized) return unauthorized;
 
   try {
@@ -89,6 +89,8 @@ export async function POST(request: Request) {
       uploadedAt,
       fileLastModified,
       uploadBatchId,
+      uploadedByUserId: session.user.id,
+      uploadedByName: session.user.name?.trim() || undefined,
     });
 
     await indexMedia(doc);

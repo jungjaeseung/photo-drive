@@ -37,11 +37,12 @@ const worker = new Worker(
         break;
       }
       case "notifyUploadBatch": {
-        const { batchId, count } = job.data as {
+        const { batchId, count, uploaderName } = job.data as {
           batchId: string;
           count: number;
+          uploaderName?: string;
         };
-        await finalizeUploadBatch(batchId, count);
+        await finalizeUploadBatch(batchId, count, uploaderName);
         break;
       }
       default:

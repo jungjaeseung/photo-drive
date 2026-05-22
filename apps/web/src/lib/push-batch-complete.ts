@@ -2,13 +2,14 @@ import { getMediaQueue } from "@/lib/queue";
 
 export async function finalizeUploadBatch(
   batchId: string,
-  expectedCount: number
+  expectedCount: number,
+  uploaderName?: string
 ): Promise<void> {
   if (expectedCount <= 0) return;
   const q = getMediaQueue();
   await q.add(
     "notifyUploadBatch",
-    { batchId, count: expectedCount },
+    { batchId, count: expectedCount, uploaderName },
     {
       jobId: `notifyUploadBatch-${batchId}`,
       removeOnComplete: true,

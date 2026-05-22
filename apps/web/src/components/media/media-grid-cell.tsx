@@ -3,7 +3,9 @@
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { setMediaNavContext } from "@/lib/media-nav-context";
 import { cn } from "@/lib/utils";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FavoriteHeartButton } from "@/components/media/favorite-heart-button";
+import { setFavorite } from "@/lib/favorite-api";
 import type { MediaGridItem } from "./media-grid";
 import { ProgressiveImage } from "./progressive-image";
 import { SelectionCheck } from "./selection-check";
@@ -20,6 +22,7 @@ interface MediaGridCellProps {
   onSelect?: (item: MediaGridItem) => void;
   onToggleSelect?: (id: string) => void;
   onLongPress?: (item: MediaGridItem) => void;
+  onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
 }
 
 export function MediaGridCell({
@@ -31,9 +34,16 @@ export function MediaGridCell({
   onSelect,
   onToggleSelect,
   onLongPress,
+  onFavoritedChange,
 }: MediaGridCellProps) {
+  const [favorited, setFavorited] = useState(!!item.favorited);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    setFavorited(!!item.favorited);
+  }, [item.id, item.favorited]);
   const longPressFiredRef = useRef(false);
 
   function clearTimer() {
@@ -121,6 +131,28 @@ export function MediaGridCell({
       {item.status === "processing" && (
         <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs text-white">
           처리 중
+        </span>
+      )}
+      {item.status !== "processing" && mode !== "select" && (
+        <span className="absolute bottom-1 left-1">
+          <FavoriteHeartButton
+            favorited={favorited}
+            size="sm"
+            stopPropagation
+            onToggle={() => {
+              if (togglingFavorite) return;
+              const next = !favorited;
+              setFavorited(next);
+              setTogglingFavorite(true);
+              void setFavorite(item.id, next)
+                .then((ok) => {
+                  setFavorited(ok);
+                  onFavoritedChange?.(item.id, ok);
+                })
+                .catch(() => setFavorited(favorited))
+                .finally(() => setTogglingFavorite(false));
+            }}
+          />
         </span>
       )}
       {mode === "select" && (

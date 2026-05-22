@@ -1,7 +1,7 @@
 "use client";
 
 import { CategoryPreviewThumb } from "@/components/collections/category-preview-thumb";
-import { Film, Image } from "lucide-react";
+import { Film, Heart, Image } from "lucide-react";
 import Link from "next/link";
 
 interface CategoryGridProps {
@@ -42,7 +42,8 @@ export function CategoryGrid({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2 px-2">
+    <div className="flex flex-col gap-2 px-2">
+    <div className="grid grid-cols-2 gap-2">
       {categories.map(({ href, label, icon: Icon, thumbKey }) => {
         const thumb = thumbs[thumbKey];
         return (
@@ -64,6 +65,16 @@ export function CategoryGrid({
           </Link>
         );
       })}
+    </div>
+    <Link
+      href="/collections/favorites"
+      className="group relative flex aspect-[4/1] items-center overflow-hidden rounded-lg bg-zinc-100 px-4 dark:bg-zinc-900"
+    >
+      <Heart className="h-5 w-5 text-red-500" />
+      <span className="ml-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+        즐겨찾기
+      </span>
+    </Link>
     </div>
   );
 }

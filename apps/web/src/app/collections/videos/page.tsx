@@ -16,6 +16,7 @@ export default function VideosOnlyPage() {
     refresh,
     prependProcessingItem,
     loadItemsForDateKey,
+    setItemFavorited,
   } = useMediaList({
     type: "video",
   });
@@ -46,6 +47,7 @@ export default function VideosOnlyPage() {
           onToggleDateGroup={handleToggleDateGroup}
           loadingDateKey={loadingDateKey}
           onLongPress={handleLongPress}
+          onFavoritedChange={setItemFavorited}
           hasMore={hasMore}
           loadingMore={loading}
           onLoadMore={loadMore}
@@ -63,7 +65,11 @@ export default function VideosOnlyPage() {
         onAlbumAdded={refresh}
         onDeleted={refresh}
       />
-      <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
+      <MediaViewerLayer
+        viewer={viewer}
+        onDeleted={refresh}
+        onFavoritedChange={setItemFavorited}
+      />
     </div>
   );
 }
