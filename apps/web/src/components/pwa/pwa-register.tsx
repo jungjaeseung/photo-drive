@@ -1,6 +1,6 @@
 "use client";
 
-import { getClientBasePath } from "@/lib/push-config";
+import { getClientBasePath, getServiceWorkerScope } from "@/lib/push-config";
 import { SW_READY_EVENT } from "@/lib/push-client";
 import { useEffect, useRef } from "react";
 
@@ -12,7 +12,7 @@ export function PwaRegister() {
 
     const base = getClientBasePath();
     const swUrl = `${base}/sw.js`;
-    const scope = base ? `${base}/` : "/";
+    const scope = getServiceWorkerScope();
 
     navigator.serviceWorker
       .register(swUrl, { scope })

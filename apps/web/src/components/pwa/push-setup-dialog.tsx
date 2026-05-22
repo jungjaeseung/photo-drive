@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { clearPushConfigCache, fetchPushConfig } from "@/lib/push-config";
 import {
+  ensureServiceWorkerRegistered,
   isIOS,
   isPushContextOk,
   isPushSupported,
@@ -30,6 +31,7 @@ type Diag = {
   basePath: string;
   standalone: boolean;
   configEnabled: boolean;
+  canSend: boolean;
   configError: string | null;
   pushState: PushSetupState;
   hasPushManager: boolean;
@@ -49,6 +51,7 @@ function buildSyncDiag(): Diag {
     basePath,
     standalone: isStandalonePwa(),
     configEnabled: false,
+    canSend: false,
     configError: null,
     pushState: "unsupported",
     hasPushManager: false,
@@ -59,23 +62,34 @@ function buildSyncDiag(): Diag {
 async function loadPushDiag(): Promise<Diag> {
   const diag = buildSyncDiag();
 
-  try {
-    const config = await fetchPushConfig();
-    diag.configEnabled = config.enabled;
-    if (!config.enabled) {
-      diag.configError = "enabled=false (서버 VAPID 확인)";
-    }
-  } catch (e) {
-    diag.configError = String(e);
-  }
-
   if (!isPushSupported()) {
     diag.pushState = "unsupported";
+    diag.loadError = "Notification 또는 Service Worker 미지원";
     return diag;
   }
 
+  try {
+    const config = await fetchPushConfig();
+    diag.configEnabled = config.enabled;
+    diag.canSend = config.canSend;
+    if (!config.enabled) {
+      diag.configError = "공개키 없음 — NEXT_PUBLIC_VAPID_PUBLIC_KEY 확인";
+    } else if (!config.canSend) {
+      diag.configError =
+        "구독은 가능, 발송은 worker VAPID_PRIVATE_KEY 필요";
+    }
+  } catch (e) {
+    diag.configError = `API 오류: ${String(e)}`;
+  }
+
+  await ensureServiceWorkerRegistered();
+  diag.hasPushManager = await waitForPushManager(8000);
+
   if (!diag.configEnabled) {
     diag.pushState = "server_off";
+    if (!diag.hasPushManager) {
+      diag.loadError = "Service Worker 미등록 — 앱을 한 번 종료 후 다시 열기";
+    }
     return diag;
   }
 
@@ -84,10 +98,10 @@ async function loadPushDiag(): Promise<Diag> {
     return diag;
   }
 
-  diag.hasPushManager = await waitForPushManager(4000);
   if (!diag.hasPushManager) {
     diag.pushState = "unsupported";
-    diag.loadError = "Service Worker / pushManager 준비 안 됨";
+    diag.loadError =
+      "pushManager 없음 — iOS 16.4+ 홈 화면 앱인지 확인, 앱 재시작";
     return diag;
   }
 
@@ -99,8 +113,9 @@ async function loadPushDiag(): Promise<Diag> {
 
   if (permission === "granted") {
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      const { getServiceWorkerRegistration } = await import("@/lib/push-client");
+      const reg = await getServiceWorkerRegistration(5000);
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
       diag.pushState = sub ? "ready" : "need_reconnect";
     } catch (e) {
       diag.pushState = "need_reconnect";
@@ -164,8 +179,11 @@ export function PushSetupDialog({ open, onOpenChange }: PushSetupDialogProps) {
 
   const showEnable =
     diag != null &&
+    diag.configEnabled &&
+    diag.hasPushManager &&
     diag.pushState !== "ready" &&
-    diag.pushState !== "server_off";
+    diag.pushState !== "server_off" &&
+    diag.pushState !== "ios_browser";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -173,50 +191,57 @@ export function PushSetupDialog({ open, onOpenChange }: PushSetupDialogProps) {
         <DialogTitle className="text-base font-semibold">업로드 완료 알림</DialogTitle>
 
         <p className="mt-2 text-xs text-zinc-400">
-          iPhone은 홈 화면에 추가한 앱에서만 푸시가 됩니다. 아래 「현재 주소」에
-          /photos 가 있어야 합니다.
+          iPhone은 홈 화면에 추가한 앱에서만 푸시가 됩니다.
         </p>
 
         {loading && (
           <p className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
             <Loader2 className="h-3 w-3 animate-spin" />
-            상태 확인 중…
+            상태 확인 중… (최대 10초)
           </p>
         )}
 
-        {diag && (
+        {diag && !loading && (
           <dl className="mt-3 space-y-2 rounded-lg bg-zinc-950 p-3 text-[11px] text-zinc-300">
             <div>
               <dt className="text-zinc-500">현재 주소</dt>
               <dd className="break-all font-mono">{diag.href}</dd>
             </div>
             <div>
-              <dt className="text-zinc-500">경로 (pathname)</dt>
+              <dt className="text-zinc-500">경로</dt>
               <dd className="font-mono">{diag.pathname}</dd>
             </div>
             <div>
-              <dt className="text-zinc-500">/photos 사용</dt>
+              <dt className="text-zinc-500">/photos</dt>
               <dd>
                 {diag.basePath === "/photos" ? (
                   <span className="text-green-400">예</span>
                 ) : (
-                  <span className="text-amber-400">아니오 ({diag.basePath})</span>
+                  <span className="text-amber-400">아니오</span>
                 )}
               </dd>
             </div>
             <div>
-              <dt className="text-zinc-500">홈 화면 앱 (standalone)</dt>
+              <dt className="text-zinc-500">홈 화면 앱</dt>
               <dd>{diag.standalone ? "예" : "아니오"}</dd>
             </div>
             <div>
-              <dt className="text-zinc-500">서버 푸시 설정</dt>
+              <dt className="text-zinc-500">구독용 공개키</dt>
               <dd>
                 {diag.configEnabled ? (
-                  <span className="text-green-400">켜짐</span>
+                  <span className="text-green-400">있음</span>
                 ) : (
-                  <span className="text-amber-400">
-                    꺼짐{diag.configError ? ` — ${diag.configError}` : ""}
-                  </span>
+                  <span className="text-amber-400">없음</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-zinc-500">서버 발송 설정</dt>
+              <dd>
+                {diag.canSend ? (
+                  <span className="text-green-400">완료</span>
+                ) : (
+                  <span className="text-amber-400">worker 키 필요</span>
                 )}
               </dd>
             </div>
@@ -225,13 +250,15 @@ export function PushSetupDialog({ open, onOpenChange }: PushSetupDialogProps) {
               <dd>{diag.hasPushManager ? "있음" : "없음"}</dd>
             </div>
             <div>
-              <dt className="text-zinc-500">이 기기 상태</dt>
+              <dt className="text-zinc-500">상태</dt>
               <dd className="font-mono">{diag.pushState}</dd>
             </div>
-            {diag.loadError && (
+            {(diag.configError || diag.loadError) && (
               <div>
-                <dt className="text-zinc-500">오류</dt>
-                <dd className="text-red-400">{diag.loadError}</dd>
+                <dt className="text-zinc-500">안내</dt>
+                <dd className="text-amber-300">
+                  {[diag.configError, diag.loadError].filter(Boolean).join(" · ")}
+                </dd>
               </div>
             )}
           </dl>
@@ -239,35 +266,29 @@ export function PushSetupDialog({ open, onOpenChange }: PushSetupDialogProps) {
 
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
 
-        {diag?.pushState === "ios_browser" && isIOS() && (
-          <p className="mt-2 text-xs text-amber-400">
-            Safari 탭이 아니라 Photo Drive 홈 화면 아이콘으로 연 뒤 다시 여세요.
+        {diag?.pushState === "need_enable" && !loading && (
+          <p className="mt-2 text-xs text-zinc-400">
+            「알림 받기」를 누르면 iOS 알림 허용 창이 뜹니다.
           </p>
         )}
 
         {diag?.pushState === "denied" && (
           <p className="mt-2 text-xs text-amber-400">
-            설정 → 알림 → Photo Drive에서 알림을 허용한 뒤 「상태 새로고침」을
-            누르세요.
-          </p>
-        )}
-
-        {diag?.pushState === "server_off" && (
-          <p className="mt-2 text-xs text-amber-400">
-            서버 VAPID 환경 변수가 없습니다. docker compose build 전에 export
-            필요합니다.
+            설정 → 알림 → Photo Drive 에서 허용 후 새로고침
           </p>
         )}
 
         {diag?.pushState === "ready" && (
-          <p className="mt-2 text-xs text-green-400">
-            이 기기는 알림 등록이 완료된 상태입니다.
-          </p>
+          <p className="mt-2 text-xs text-green-400">알림 등록 완료</p>
         )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {showEnable && (
-            <Button size="sm" disabled={busy || loading} onClick={() => void handleEnable()}>
+            <Button
+              size="sm"
+              disabled={busy || loading}
+              onClick={() => void handleEnable()}
+            >
               {busy ? (
                 <>
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -285,7 +306,7 @@ export function PushSetupDialog({ open, onOpenChange }: PushSetupDialogProps) {
               disabled={busy || loading}
               onClick={() => void handleEnable()}
             >
-              다시 허용 요청
+              다시 허용
             </Button>
           )}
           <Button

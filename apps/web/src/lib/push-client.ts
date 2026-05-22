@@ -2,6 +2,7 @@ import {
   clearPushConfigCache,
   fetchPushConfig,
   getClientBasePath,
+  getServiceWorkerScope,
 } from "@/lib/push-config";
 
 /** VAPID public key (URL-safe base64) → PushManager applicationServerKey */
@@ -28,20 +29,59 @@ export function isPushSupported(): boolean {
   );
 }
 
-/** SW의 pushManager 존재 여부 (iOS PWA 필수) */
-export async function hasPushManager(): Promise<boolean> {
-  if (!isPushSupported()) return false;
+/** serviceWorker.ready는 SW 미등록 시 iOS에서 무한 대기 → 타임아웃 필수 */
+export async function getServiceWorkerRegistration(
+  timeoutMs = 8000
+): Promise<ServiceWorkerRegistration | null> {
+  if (!isPushSupported()) return null;
+
+  const scope = getServiceWorkerScope();
+
   try {
-    const reg = await navigator.serviceWorker.ready;
-    return "pushManager" in reg;
+    const existing = await navigator.serviceWorker.getRegistration(scope);
+    if (existing?.active && "pushManager" in existing) return existing;
+  } catch {
+    /* ignore */
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        clearTimeout(timer);
+        resolve(reg);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+  });
+}
+
+export async function ensureServiceWorkerRegistered(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  const scope = getServiceWorkerScope();
+  const base = getClientBasePath();
+  try {
+    const existing = await navigator.serviceWorker.getRegistration(scope);
+    if (existing) return true;
+    await navigator.serviceWorker.register(`${base}/sw.js`, { scope });
+    return (await getServiceWorkerRegistration(10000)) != null;
   } catch {
     return false;
   }
 }
 
-/** SW 등록·활성화까지 대기 (최초 진입 시 pushManager가 늦게 뜸) */
-export async function waitForPushManager(timeoutMs = 20000): Promise<boolean> {
+/** SW의 pushManager 존재 여부 (iOS PWA 필수) */
+export async function hasPushManager(): Promise<boolean> {
+  const reg = await getServiceWorkerRegistration(5000);
+  return reg != null && "pushManager" in reg;
+}
+
+/** SW 등록·활성화까지 대기 */
+export async function waitForPushManager(timeoutMs = 12000): Promise<boolean> {
   if (!isPushSupported()) return false;
+  await ensureServiceWorkerRegistered();
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await hasPushManager()) return true;
@@ -88,7 +128,8 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
   if (permission !== "granted") return false;
 
   const base = getClientBasePath();
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await getServiceWorkerRegistration();
+  if (!reg) return false;
   let subscription = await reg.pushManager.getSubscription();
 
   if (!subscription) {
@@ -104,6 +145,7 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(subscription.toJSON()),
+    signal: AbortSignal.timeout(8000),
   });
 
   return res.ok;
@@ -119,7 +161,8 @@ export async function ensurePushSubscription(): Promise<boolean> {
   if (!vapidPublicKey) return false;
 
   const base = getClientBasePath();
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await getServiceWorkerRegistration();
+  if (!reg) return false;
   let subscription = await reg.pushManager.getSubscription();
 
   if (!subscription) {
@@ -136,6 +179,7 @@ export async function ensurePushSubscription(): Promise<boolean> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(subscription.toJSON()),
+    signal: AbortSignal.timeout(8000),
   });
 
   return res.ok;
@@ -145,7 +189,8 @@ export async function hasActivePushSubscription(): Promise<boolean> {
   if (Notification.permission !== "granted" || !(await hasPushManager())) {
     return false;
   }
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await getServiceWorkerRegistration();
+  if (!reg) return false;
   return (await reg.pushManager.getSubscription()) != null;
 }
 

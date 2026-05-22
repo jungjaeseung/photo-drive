@@ -1,4 +1,8 @@
-let cached: { enabled: boolean; vapidPublicKey: string | null } | null = null;
+let cached: {
+  enabled: boolean;
+  canSend: boolean;
+  vapidPublicKey: string | null;
+} | null = null;
 
 /** 빌드 env 없을 때 /photos 경로에서도 API 호출되도록 */
 export function getClientBasePath(): string {
@@ -12,37 +16,44 @@ export function getClientBasePath(): string {
   return "";
 }
 
+export function getServiceWorkerScope(): string {
+  const base = getClientBasePath();
+  return base ? `${base}/` : "/";
+}
+
 export async function fetchPushConfig(): Promise<{
   enabled: boolean;
+  canSend: boolean;
   vapidPublicKey: string | null;
 }> {
   if (cached) return cached;
 
   const base = getClientBasePath();
-  const url = new URL(
-    `${base}/api/push/config`,
-    typeof window !== "undefined" ? window.location.origin : "http://localhost"
-  );
-  url.searchParams.set("_", String(Date.now()));
+  const path = `${base}/api/push/config`;
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await fetch(path, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) {
-      cached = { enabled: false, vapidPublicKey: null };
+      cached = { enabled: false, canSend: false, vapidPublicKey: null };
       return cached;
     }
     const data = (await res.json()) as {
       enabled?: boolean;
+      canSend?: boolean;
       vapidPublicKey?: string | null;
     };
     cached = {
       enabled: !!data.enabled && !!data.vapidPublicKey,
+      canSend: !!data.canSend,
       vapidPublicKey: data.vapidPublicKey ?? null,
     };
     return cached;
-  } catch {
-    cached = { enabled: false, vapidPublicKey: null };
-    return cached;
+  } catch (e) {
+    cached = { enabled: false, canSend: false, vapidPublicKey: null };
+    throw e;
   }
 }
 

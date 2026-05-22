@@ -5,14 +5,16 @@ export async function GET() {
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
     process.env.VAPID_PUBLIC_KEY ||
     null;
-  const enabled = !!(
+  const canSend = !!(
     vapidPublicKey &&
     process.env.VAPID_PRIVATE_KEY &&
     process.env.VAPID_SUBJECT
   );
 
   return NextResponse.json({
-    enabled,
-    vapidPublicKey: enabled ? vapidPublicKey : null,
+    /** 클라이언트 구독 가능 (공개키만 있으면 됨) */
+    enabled: !!vapidPublicKey,
+    canSend,
+    vapidPublicKey,
   });
 }
