@@ -43,7 +43,8 @@ export default auth((req) => {
  */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icons|manifest.webmanifest|sw\\.js).*)",
+    // 업로드는 본문이 크므로 미들웨어 제외(10MB 버퍼 한도). 인증은 upload route에서 requireSession.
+    "/((?!_next/static|_next/image|favicon.ico|icons|manifest.webmanifest|sw\\.js|api/media/upload).*)",
     "/",
   ],
 };
