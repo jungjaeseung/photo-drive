@@ -110,6 +110,12 @@ export function UploadDrawer({
           ) : null}
         </DrawerHeader>
 
+        {activeCount > 0 ? (
+          <p className="mx-4 mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+            업로드가 끝날 때까지 앱을 닫거나 화면을 끄지 마세요.
+          </p>
+        ) : null}
+
         <ul className="max-h-[50vh] overflow-y-auto px-4 pb-4">
           {items.map((item) => (
             <li

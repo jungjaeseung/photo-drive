@@ -141,10 +141,12 @@ function SortableAlbumItem({
     await onDelete(album.id);
   }
 
+  const downloadBusy = downloadingId !== null;
+
   async function handleDownload(e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    if (isDownloading || !canDownload || !onDownload) return;
+    if (downloadBusy || !canDownload || !onDownload) return;
     await onDownload(album);
   }
 
@@ -181,14 +183,16 @@ function SortableAlbumItem({
       {onDownload && (
         <button
           type="button"
-          disabled={!canDownload || isDownloading}
+          disabled={!canDownload || downloadBusy}
           onClick={handleDownload}
-          className="absolute bottom-1 right-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-black/40 text-white hover:bg-black/55 disabled:opacity-50"
+          className="absolute bottom-1 right-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-black/40 text-white hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={`${album.name} 원본 ZIP 다운로드`}
           title={
-            canDownload
-              ? `${album.name}.zip 다운로드`
-              : "항목이 없습니다"
+            downloadBusy && !isDownloading
+              ? "다른 앨범 다운로드 중"
+              : canDownload
+                ? `${album.name}.zip 다운로드`
+                : "항목이 없습니다"
           }
         >
           {isDownloading ? (
