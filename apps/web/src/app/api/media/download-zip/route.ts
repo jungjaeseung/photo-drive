@@ -14,6 +14,19 @@ const MAX_FILES = 100;
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+function contentDisposition(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, "_");
+  const encoded = encodeURIComponent(filename);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+function resolveZipFilename(requested: unknown, fallback: string): string {
+  if (typeof requested !== "string" || !requested.trim()) return fallback;
+  const base = requested.trim().replace(/[/\\]/g, "").slice(0, 120);
+  if (!base || base.includes("..")) return fallback;
+  return base.toLowerCase().endsWith(".zip") ? base : `${base}.zip`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -51,11 +64,15 @@ export async function POST(request: NextRequest) {
     const passThrough = await buildZipStream(entries);
     const webStream = Readable.toWeb(passThrough) as ReadableStream;
     const date = new Date().toISOString().slice(0, 10);
+    const filename = resolveZipFilename(
+      body.filename,
+      `photo-drive-${date}.zip`
+    );
 
     return new NextResponse(webStream, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="photo-drive-${date}.zip"`,
+        "Content-Disposition": contentDisposition(filename),
         "X-Source-Bytes": String(sourceBytes),
       },
     });

@@ -105,7 +105,7 @@ async function downloadOneZip(
   const res = await fetch(`${base}/api/media/download-zip`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mediaIds }),
+    body: JSON.stringify({ mediaIds, filename }),
   });
 
   if (!res.ok) {
@@ -152,8 +152,9 @@ async function downloadOneZip(
   const a = document.createElement("a");
   a.href = url;
   a.download =
-    parseContentDispositionFilename(res.headers.get("Content-Disposition")) ??
-    filename;
+    filename ||
+    parseContentDispositionFilename(res.headers.get("Content-Disposition")) ||
+    "download.zip";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
