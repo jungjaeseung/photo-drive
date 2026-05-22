@@ -88,7 +88,11 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
       status: "pending",
       uploadBatchId,
     }));
-    setItems((prev) => [...prev, ...newItems]);
+    setItems((prev) => {
+      const prevDone =
+        prev.length > 0 && prev.every((i) => !isActiveStatus(i.status));
+      return [...(prevDone ? [] : prev), ...newItems];
+    });
     // 파일 피커 닫힘 직후 pointer 이벤트가 outside-click으로 잡혀 Drawer가 바로 닫히는 것 방지
     window.setTimeout(() => setDrawerOpen(true), 150);
   }, []);
@@ -208,6 +212,14 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
   useEffect(() => {
     if (wasActiveRef.current && !isActive) {
       optionsRef.current.onUploaded?.();
+      // batch-complete 알림 effect 이후 목록 비우기
+      const t = window.setTimeout(() => {
+        setItems([]);
+        setDrawerOpen(false);
+        notifiedBatchesRef.current.clear();
+      }, 0);
+      wasActiveRef.current = isActive;
+      return () => window.clearTimeout(t);
     }
     wasActiveRef.current = isActive;
   }, [isActive]);
