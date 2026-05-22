@@ -1,6 +1,13 @@
 import { authConfig } from "@/auth.config";
 import { isPublicPath } from "@/lib/auth-public-paths";
 import { stripBasePath, withBasePath } from "@/lib/paths";
+import {
+  isRegistrationBasicAuthConfigured,
+  isRegistrationGatePath,
+  registrationBasicAuthChallenge,
+  registrationBasicAuthForbidden,
+  verifyRegistrationBasicAuth,
+} from "@/lib/registration-basic-auth";
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -8,6 +15,16 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const path = stripBasePath(req.nextUrl.pathname);
+
+  if (isRegistrationGatePath(path)) {
+    if (!isRegistrationBasicAuthConfigured()) {
+      return registrationBasicAuthForbidden();
+    }
+    if (!verifyRegistrationBasicAuth(req)) {
+      return registrationBasicAuthChallenge();
+    }
+  }
+
   if (isPublicPath(path)) return;
 
   if (!req.auth?.user?.id) {

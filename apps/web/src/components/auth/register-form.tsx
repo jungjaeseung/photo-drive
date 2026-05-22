@@ -23,6 +23,7 @@ export function RegisterForm() {
     try {
       const res = await fetch(`${base}/api/auth/register`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: id.trim(),

@@ -4,11 +4,23 @@ import {
   validatePassword,
 } from "@/lib/auth-validation";
 import { createUser, userExists } from "@/lib/es-users";
+import {
+  isRegistrationBasicAuthConfigured,
+  registrationBasicAuthChallenge,
+  registrationBasicAuthForbidden,
+  verifyRegistrationBasicAuth,
+} from "@/lib/registration-basic-auth";
 import type { UserDocument } from "@photo-drive/shared";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
+  if (!isRegistrationBasicAuthConfigured()) {
+    return registrationBasicAuthForbidden();
+  }
+  if (!verifyRegistrationBasicAuth(request)) {
+    return registrationBasicAuthChallenge();
+  }
   let body: {
     id?: string;
     password?: string;

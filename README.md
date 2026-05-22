@@ -19,7 +19,7 @@ URL을 아는 사람이 사진을 보지 못하도록 **로그인 필수**입니
 | 경로 | 설명 |
 |------|------|
 | `/photos/login` | 아이디·비밀번호 로그인 |
-| `/photos/login/new` | 회원가입 (앱 안에는 링크 없음, 주소 직접 입력) |
+| `/photos/login/new` | 회원가입 (앱 안에는 링크 없음, 주소 직접 입력, **HTTP Basic Auth** 필요) |
 
 **환경 변수**
 
@@ -31,6 +31,8 @@ openssl rand -base64 32   # AUTH_SECRET 생성
 |------|------|
 | `AUTH_SECRET` | NextAuth JWT 서명 (필수, 커밋 금지) |
 | `AUTH_TRUST_HOST` | `true` (리버스 프록시 뒤) |
+| `REGISTRATION_BASIC_AUTH_USER` | `/photos/login/new` Basic Auth 아이디 |
+| `REGISTRATION_BASIC_AUTH_PASSWORD` | `/photos/login/new` Basic Auth 비밀번호 |
 
 **최초 사용자**
 
