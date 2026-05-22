@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "lint": "tsc --noEmit",
-    "regenerate:images": "pnpm --filter @photo-drive/shared build && tsx scripts/regenerate-image-derivatives.ts"
+    "regenerate:images": "pnpm --filter @photo-drive/shared build && tsx scripts/regenerate-image-derivatives.ts",
+    "regenerate:videos": "pnpm --filter @photo-drive/shared build && tsx scripts/regenerate-videos.ts"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.17.0",

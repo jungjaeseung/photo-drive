@@ -14,6 +14,30 @@ import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
 const execFileAsync = promisify(execFile);
 
+export interface ProcessVideoOptions {
+  /** 기본 true. 일괄 재변환 스크립트에서는 false */
+  notify?: boolean;
+}
+
+/** 포스터용 안전 시크 (1초 고정은 1초 미만 영상에서 실패) */
+function posterSeekSeconds(duration?: number): string {
+  if (duration == null || !Number.isFinite(duration) || duration <= 0) {
+    return "0";
+  }
+  if (duration < 1) {
+    return (duration / 2).toFixed(3);
+  }
+  return String(Math.min(1, duration / 2));
+}
+
+/** 미리보기 클립 길이: 원본이 8초 미만이면 전체 길이 사용 */
+function previewClipSeconds(duration?: number): number {
+  if (duration == null || !Number.isFinite(duration) || duration <= 0) {
+    return VIDEO_PREVIEW_SECONDS;
+  }
+  return Math.min(VIDEO_PREVIEW_SECONDS, duration);
+}
+
 interface FfprobeFormat {
   duration?: string;
   tags?: Record<string, string | undefined>;
@@ -43,7 +67,11 @@ async function ffprobe(filePath: string) {
   };
 }
 
-export async function processVideo(mediaId: string, storageRoot?: string): Promise<void> {
+export async function processVideo(
+  mediaId: string,
+  storageRoot?: string,
+  options: ProcessVideoOptions = {}
+): Promise<void> {
   const root = storageRoot ?? getStorageRoot();
   const doc = await getMediaById(mediaId);
   if (!doc || doc.type !== "video") {
@@ -54,9 +82,18 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
   const dir = getMediaDir(root, uploadedAt, mediaId);
   const originalFull = path.join(root, doc.originalPath);
 
+  await updateMedia(mediaId, {
+    status: "processing",
+    errorMessage: undefined,
+  });
+
   try {
     const probe = await ffprobe(originalFull);
     const videoStream = probe.streams?.find((s) => s.codec_type === "video");
+    if (!videoStream) {
+      throw new Error("No video stream in file");
+    }
+    const hasAudio = probe.streams?.some((s) => s.codec_type === "audio");
     const duration = probe.format?.duration
       ? parseFloat(probe.format.duration)
       : undefined;
@@ -68,13 +105,15 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     const posterJpg = path.join(dir, "poster-temp.jpg");
     const posterPath = path.join(dir, "poster.webp");
     const previewPath = path.join(dir, "preview.mp4");
+    const seekSec = posterSeekSeconds(duration);
+    const clipSec = previewClipSeconds(duration);
 
     await execFileAsync("ffmpeg", [
       "-y",
+      "-ss",
+      seekSec,
       "-i",
       originalFull,
-      "-ss",
-      "00:00:01",
       "-vframes",
       "1",
       "-q:v",
@@ -89,12 +128,12 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
 
     await unlink(posterJpg).catch(() => {});
 
-    await execFileAsync("ffmpeg", [
+    const previewArgs = [
       "-y",
       "-i",
       originalFull,
       "-t",
-      String(VIDEO_PREVIEW_SECONDS),
+      String(clipSec),
       "-vf",
       "scale=1280:-2",
       "-c:v",
@@ -103,12 +142,15 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       "fast",
       "-crf",
       "28",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "96k",
-      previewPath,
-    ]);
+    ];
+    if (hasAudio) {
+      previewArgs.push("-c:a", "aac", "-b:a", "96k");
+    } else {
+      previewArgs.push("-an");
+    }
+    previewArgs.push(previewPath);
+
+    await execFileAsync("ffmpeg", previewArgs);
 
     const posterRel = getRelativeMediaPath(uploadedAt, mediaId, "poster.webp");
     const previewRel = getRelativeMediaPath(uploadedAt, mediaId, "preview.mp4");
@@ -131,7 +173,9 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     );
 
     await updateMedia(mediaId, snapshot);
-    scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
+    if (options.notify !== false) {
+      scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
+    }
   } catch (error) {
     await updateMedia(mediaId, {
       status: "failed",

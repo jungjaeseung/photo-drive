@@ -185,6 +185,20 @@ pnpm --filter @photo-drive/worker regenerate:images              # 전체 실행
 # 테스트: pnpm --filter @photo-drive/worker regenerate:images -- --limit 10
 ```
 
+### 동영상 재변환 (처리 실패·썸네일 없음)
+
+짧은 영상 등으로 `processVideo`가 실패한 항목(`status: failed`, 썸네일 없는 `ready`)을 다시 변환합니다. worker 컨테이너를 멈출 필요는 없습니다.
+
+```bash
+export STORAGE_ROOT=/mnt/extra/photo-drive
+export ELASTICSEARCH_URL=http://127.0.0.1:9200
+pnpm --filter @photo-drive/worker regenerate:videos -- --dry-run
+pnpm --filter @photo-drive/worker regenerate:videos
+# 테스트: pnpm --filter @photo-drive/worker regenerate:videos -- --limit 5
+```
+
+배포 후 worker 이미지를 다시 빌드해야 신규 업로드에도 수정된 ffmpeg 로직이 적용됩니다.
+
 ## GitHub Actions 배포 (main push)
 
 `main` 브랜치에 push하면 홈서버에 SSH로 배포합니다.
