@@ -1,9 +1,12 @@
 "use client";
 
-import { CachedImage } from "@/components/media/cached-image";
+import {
+  getCachedMediaImageUrl,
+  resolveMediaImage,
+} from "@/lib/media-image-cache";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CategoryPreviewThumbProps {
   src?: string;
@@ -11,72 +14,152 @@ interface CategoryPreviewThumbProps {
   className?: string;
 }
 
-const FADE_MS = 500;
+const FADE_MS = 650;
+
+function useResolvedSrc(url?: string) {
+  const [resolved, setResolved] = useState<string | undefined>(() =>
+    url ? getCachedMediaImageUrl(url) : undefined
+  );
+
+  useEffect(() => {
+    if (!url) {
+      setResolved(undefined);
+      return;
+    }
+
+    const cached = getCachedMediaImageUrl(url);
+    if (cached) {
+      setResolved(cached);
+      return;
+    }
+
+    let cancelled = false;
+    resolveMediaImage(url)
+      .then((blobUrl) => {
+        if (!cancelled) setResolved(blobUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setResolved(url);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return resolved;
+}
+
+function CrossfadeLayer({
+  url,
+  visible,
+}: {
+  url: string;
+  visible: boolean;
+}) {
+  const resolved = useResolvedSrc(url);
+
+  if (!resolved) {
+    return (
+      <div
+        className={cn(
+          "absolute inset-0 bg-zinc-200 transition-opacity ease-in-out dark:bg-zinc-800",
+          visible ? "opacity-100" : "opacity-0"
+        )}
+        style={{ transitionDuration: `${FADE_MS}ms` }}
+        aria-hidden
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={resolved}
+      alt=""
+      decoding="async"
+      draggable={false}
+      className={cn(
+        "absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
+    />
+  );
+}
+
+/** 다음 프레임에 opacity 전환이 적용되도록 두 번 rAF */
+function afterPaint(fn: () => void) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(fn);
+  });
+}
 
 export function CategoryPreviewThumb({
   src,
   fallbackIcon: Icon,
   className,
 }: CategoryPreviewThumbProps) {
-  const [current, setCurrent] = useState<string | undefined>(src);
-  const [next, setNext] = useState<string | undefined>();
-  const [nextVisible, setNextVisible] = useState(false);
+  const [baseUrl, setBaseUrl] = useState<string | undefined>(src);
+  const [overlayUrl, setOverlayUrl] = useState<string | undefined>();
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const preloadRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     if (!src) {
-      setCurrent(undefined);
-      setNext(undefined);
-      setNextVisible(false);
+      setBaseUrl(undefined);
+      setOverlayUrl(undefined);
+      setOverlayVisible(false);
       return;
     }
 
-    if (src === current && !next) {
-      if (current !== src) setCurrent(src);
+    if (!baseUrl) {
+      setBaseUrl(src);
       return;
     }
 
-    if (src === current || src === next) return;
+    if (src === baseUrl || src === overlayUrl) return;
 
     let cancelled = false;
     const img = new Image();
+    preloadRef.current = img;
 
-    img.onload = () => {
+    const showOverlay = () => {
       if (cancelled) return;
-      setNext(src);
-      setNextVisible(false);
-      requestAnimationFrame(() => {
-        if (!cancelled) setNextVisible(true);
+      setOverlayUrl(src);
+      setOverlayVisible(false);
+      afterPaint(() => {
+        if (!cancelled) setOverlayVisible(true);
       });
     };
 
-    img.onerror = () => {
-      if (!cancelled) {
-        setCurrent(src);
-        setNext(undefined);
-        setNextVisible(false);
-      }
-    };
+    img.onload = showOverlay;
+    img.onerror = showOverlay;
 
-    img.src = src;
+    const cached = getCachedMediaImageUrl(src);
+    img.src = cached ?? src;
+    if (img.complete) showOverlay();
 
     return () => {
       cancelled = true;
+      img.onload = null;
+      img.onerror = null;
     };
-  }, [src, current, next]);
+  }, [src, baseUrl, overlayUrl]);
 
   useEffect(() => {
-    if (!next || !nextVisible) return;
+    if (!overlayUrl || !overlayVisible) return;
 
     const t = window.setTimeout(() => {
-      setCurrent(next);
-      setNext(undefined);
-      setNextVisible(false);
+      setBaseUrl(overlayUrl);
+      setOverlayUrl(undefined);
+      setOverlayVisible(false);
     }, FADE_MS);
 
     return () => window.clearTimeout(t);
-  }, [next, nextVisible]);
+  }, [overlayUrl, overlayVisible]);
 
-  if (!current && !next) {
+  if (!baseUrl && !overlayUrl) {
     return (
       <div
         className={cn(
@@ -90,27 +173,10 @@ export function CategoryPreviewThumb({
   }
 
   return (
-    <div className={cn("relative h-full w-full", className)}>
-      {current ? (
-        <CachedImage
-          src={current}
-          alt=""
-          loading="eager"
-          draggable={false}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : null}
-      {next ? (
-        <CachedImage
-          src={next}
-          alt=""
-          loading="eager"
-          draggable={false}
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-opacity duration-500",
-            nextVisible ? "opacity-100" : "opacity-0"
-          )}
-        />
+    <div className={cn("relative h-full w-full overflow-hidden", className)}>
+      {baseUrl ? <CrossfadeLayer url={baseUrl} visible /> : null}
+      {overlayUrl ? (
+        <CrossfadeLayer url={overlayUrl} visible={overlayVisible} />
       ) : null}
     </div>
   );
