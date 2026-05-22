@@ -1,5 +1,9 @@
 import { Client } from "@elastic/elasticsearch";
-import { ES_INDEX_ALBUMS, ES_INDEX_MEDIA } from "@photo-drive/shared";
+import {
+  ES_INDEX_ALBUMS,
+  ES_INDEX_MEDIA,
+  ES_INDEX_PUSH_SUBSCRIPTIONS,
+} from "@photo-drive/shared";
 
 const url = process.env.ELASTICSEARCH_URL ?? "http://localhost:9200";
 const client = new Client({ node: url });
@@ -61,9 +65,20 @@ async function ensureIndex(name: string, mappings: object) {
   console.log(`Created index ${name}`);
 }
 
+const pushSubscriptionMappings = {
+  properties: {
+    endpoint: { type: "keyword" },
+    subscription: { type: "object", enabled: true },
+    userAgent: { type: "keyword" },
+    createdAt: { type: "date" },
+    updatedAt: { type: "date" },
+  },
+};
+
 async function main() {
   await ensureIndex(ES_INDEX_MEDIA, mediaMappings);
   await ensureIndex(ES_INDEX_ALBUMS, albumMappings);
+  await ensureIndex(ES_INDEX_PUSH_SUBSCRIPTIONS, pushSubscriptionMappings);
   console.log("Elasticsearch indices ready");
 }
 

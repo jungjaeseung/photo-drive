@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { PwaPushSubscribe } from "@/components/pwa/pwa-push-subscribe";
 import { PwaRegister } from "@/components/pwa/pwa-register";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
         <main className="mx-auto min-h-dvh max-w-5xl">{children}</main>
         <BottomNav />
         <PwaRegister />
+        <PwaPushSubscribe />
       </body>
     </html>
   );

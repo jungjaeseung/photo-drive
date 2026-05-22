@@ -20,6 +20,54 @@
 
 아이콘 원본: `apps/web/public/icons/image.png` — 변경 후 `pnpm --filter @photo-drive/web icons:generate`로 PNG 크기별 생성.
 
+### 업로드 완료 푸시 알림
+
+홈 화면에 추가한 PWA에서 **업로드 처리 완료** 시 Web Push 알림을 받을 수 있습니다 (여러 기기·가족 폰 모두 구독 가능).
+
+**요구 사항**
+
+- HTTPS (프로덕션)
+- iOS 16.4+ **홈 화면에 추가된 PWA** (Safari 탭만으로는 푸시 불가)
+- 앱 실행 후 「알림 받기」 허용
+
+**VAPID 키 설정 (1회)**
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+`.env` 또는 Docker 배포 환경에 설정:
+
+| 변수 | 설명 |
+|------|------|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | 공개 키 (브라우저 구독용, web·app 컨테이너) |
+| `VAPID_PUBLIC_KEY` | 공개 키 (worker 발송용) |
+| `VAPID_PRIVATE_KEY` | 비밀 키 (worker만, **저장소에 커밋 금지**) |
+| `VAPID_SUBJECT` | `mailto:you@example.com` 형식 |
+
+```bash
+# 인덱스 (최초 1회)
+pnpm es:init
+
+# 로컬 예시
+export NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
+export VAPID_PUBLIC_KEY="..."
+export VAPID_PRIVATE_KEY="..."
+export VAPID_SUBJECT="mailto:you@example.com"
+```
+
+Docker:
+
+```bash
+export NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
+export VAPID_PUBLIC_KEY="..."
+export VAPID_PRIVATE_KEY="..."
+export VAPID_SUBJECT="mailto:you@example.com"
+docker compose up -d app worker
+```
+
+연속 업로드는 **3초 묶음** 후 `n개의 파일이 업로드 되었습니다` 알림 1회로 발송됩니다.
+
 ## 로컬 개발
 
 ```bash

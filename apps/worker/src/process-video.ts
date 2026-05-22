@@ -10,6 +10,7 @@ import {
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
+import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -130,6 +131,7 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     );
 
     await updateMedia(mediaId, snapshot);
+    scheduleUploadCompleteNotify();
   } catch (error) {
     await updateMedia(mediaId, {
       status: "failed",

@@ -25,6 +25,10 @@ services:
       - ELASTICSEARCH_URL=http://js-es:9200
       - REDIS_URL=redis://photo-drive-redis:6379
       - STORAGE_ROOT=/storage
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@localhost}
     volumes:
       - ${STORAGE_HOST_PATH:-./storage}:/storage
     depends_on:
@@ -42,6 +46,10 @@ services:
       - ELASTICSEARCH_URL=http://js-es:9200
       - REDIS_URL=redis://photo-drive-redis:6379
       - STORAGE_ROOT=/storage
+      - NEXT_PUBLIC_BASE_PATH=/photos
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@localhost}
     volumes:
       - ${STORAGE_HOST_PATH:-./storage}:/storage
     depends_on:

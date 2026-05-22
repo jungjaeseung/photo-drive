@@ -11,6 +11,7 @@ import exifr from "exifr";
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
+import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
 export async function processImage(mediaId: string, storageRoot?: string): Promise<void> {
   const root = storageRoot ?? getStorageRoot();
@@ -76,6 +77,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
     );
 
     await updateMedia(mediaId, snapshot);
+    scheduleUploadCompleteNotify();
   } catch (error) {
     await updateMedia(mediaId, {
       status: "failed",
