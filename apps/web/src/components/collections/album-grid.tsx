@@ -23,7 +23,15 @@ import {
   DownloadProgressSpinner,
 } from "@/components/media/download-progress-button";
 import { downloadAlbumAsZip, type DownloadProgress } from "@/lib/download-zip";
-import { Download, FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
+import { AlbumRenameDialog } from "@/components/collections/album-rename-dialog";
+import {
+  Download,
+  FolderOpen,
+  GripVertical,
+  Loader2,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -41,6 +49,7 @@ interface AlbumGridProps {
   reorderMode?: boolean;
   onReorder?: (albums: AlbumGridItem[]) => void;
   onDelete?: (albumId: string) => void | Promise<void>;
+  onRename?: (albumId: string, name: string) => void | Promise<void>;
 }
 
 function getColumnCount(width: number) {
@@ -86,14 +95,18 @@ function SortableAlbumItem({
   album,
   reorderMode,
   onDelete,
+  onRename,
   deletingId,
+  renamingId,
   downloadingId,
   onDownload,
 }: {
   album: AlbumGridItem;
   reorderMode: boolean;
   onDelete?: (albumId: string) => void | Promise<void>;
+  onRename?: (album: AlbumGridItem) => void;
   deletingId: string | null;
+  renamingId: string | null;
   downloadingId: string | null;
   onDownload?: (album: AlbumGridItem) => void | Promise<void>;
 }) {
@@ -113,8 +126,11 @@ function SortableAlbumItem({
   };
 
   const isDeleting = deletingId === album.id;
+  const isRenaming = renamingId === album.id;
   const isDownloading = downloadingId === album.id;
   const canDownload = album.mediaCount > 0;
+  const actionBusy =
+    isDeleting || isRenaming || downloadingId !== null;
 
   if (!reorderMode) {
     return (
@@ -180,10 +196,26 @@ function SortableAlbumItem({
           )}
         </button>
       )}
+      {onRename && (
+        <button
+          type="button"
+          disabled={actionBusy}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onRename(album);
+          }}
+          className="absolute bottom-1 left-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-black/40 text-white hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={`${album.name} 이름 수정`}
+          title="이름 수정"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      )}
       {onDownload && (
         <button
           type="button"
-          disabled={!canDownload || downloadBusy}
+          disabled={!canDownload || downloadBusy || actionBusy}
           onClick={handleDownload}
           className="absolute bottom-1 right-1 z-10 flex h-8 w-8 cursor-pointer touch-none items-center justify-center rounded-md bg-black/40 text-white hover:bg-black/55 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={`${album.name} 원본 ZIP 다운로드`}
@@ -215,10 +247,13 @@ export function AlbumGrid({
   reorderMode = false,
   onReorder,
   onDelete,
+  onRename,
 }: AlbumGridProps) {
   const [items, setItems] = useState(albums);
   const [columnCount, setColumnCount] = useState(columnCountProp ?? 3);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingAlbum, setRenamingAlbum] = useState<AlbumGridItem | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgress | null>(null);
@@ -277,6 +312,24 @@ export function AlbumGrid({
     }
   }
 
+  async function handleSaveRename(newName: string) {
+    if (!renamingAlbum || !onRename) return;
+    setRenamingId(renamingAlbum.id);
+    try {
+      await onRename(renamingAlbum.id, newName);
+      setItems((prev) =>
+        prev.map((a) =>
+          a.id === renamingAlbum.id ? { ...a, name: newName } : a
+        )
+      );
+      setRenamingAlbum(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRenamingId(null);
+    }
+  }
+
   async function handleDeleteAlbum(albumId: string) {
     if (!onDelete) return;
     setDeletingId(albumId);
@@ -311,8 +364,10 @@ export function AlbumGrid({
           album={album}
           reorderMode={reorderMode}
           onDelete={reorderMode ? handleDeleteAlbum : undefined}
+          onRename={reorderMode && onRename ? setRenamingAlbum : undefined}
           onDownload={reorderMode ? handleDownloadAlbum : undefined}
           deletingId={deletingId}
+          renamingId={renamingId}
           downloadingId={downloadingId}
         />
       ))}
@@ -348,6 +403,17 @@ export function AlbumGrid({
             className="pointer-events-auto"
           />
         </div>
+      )}
+      {renamingAlbum && onRename && (
+        <AlbumRenameDialog
+          open={!!renamingAlbum}
+          onOpenChange={(open) => {
+            if (!open && !renamingId) setRenamingAlbum(null);
+          }}
+          albumName={renamingAlbum.name}
+          onSave={handleSaveRename}
+          saving={renamingId === renamingAlbum.id}
+        />
       )}
     </>
   );

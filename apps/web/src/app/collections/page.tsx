@@ -95,6 +95,24 @@ export default function CollectionsPage() {
     }
   }
 
+  async function handleRenameAlbum(albumId: string, newName: string) {
+    const res = await fetch(`${base}/api/albums/${albumId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(
+        (data as { error?: string }).error ?? "앨범 이름 변경 실패"
+      );
+    }
+    const applyName = (prev: AlbumGridItem[]) =>
+      prev.map((a) => (a.id === albumId ? { ...a, name: newName } : a));
+    setAlbums(applyName);
+    if (reorderMode) setDraftAlbums((prev) => applyName(prev));
+  }
+
   async function handleDeleteAlbum(albumId: string) {
     const res = await fetch(`${base}/api/albums/${albumId}`, {
       method: "DELETE",
@@ -166,7 +184,8 @@ export default function CollectionsPage() {
         {reorderMode && (
           <>
             <p className="mb-3 px-4 text-xs text-zinc-500">
-              앨범을 드래그하여 순서를 변경하거나 새 앨범을 만드세요.
+              앨범을 드래그하여 순서를 변경하거나, 카드 좌하단에서 이름을
+              수정할 수 있습니다.
             </p>
             <div className="mb-4 flex gap-2 px-4">
             <input
@@ -201,6 +220,7 @@ export default function CollectionsPage() {
             reorderMode={reorderMode}
             onReorder={setDraftAlbums}
             onDelete={handleDeleteAlbum}
+            onRename={handleRenameAlbum}
           />
         )}
       </section>
