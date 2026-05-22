@@ -10,7 +10,6 @@ import {
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
-import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -174,6 +173,7 @@ export async function processVideo(
 
     await updateMedia(mediaId, snapshot);
     if (options.notify !== false) {
+      const { scheduleUploadCompleteNotify } = await import("./push-notify.js");
       scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
     }
   } catch (error) {
