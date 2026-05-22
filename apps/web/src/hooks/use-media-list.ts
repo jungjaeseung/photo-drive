@@ -1,7 +1,7 @@
 "use client";
 
 import type { MediaGridItem } from "@/components/media/media-grid";
-import { sortMediaItems } from "@/lib/media-sort";
+import { dedupeMediaById, sortMediaItems } from "@/lib/media-sort";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -13,7 +13,7 @@ function mergeWithOptimisticProcessing(
   const pending = prev.filter(
     (i) => i.status === "processing" && !apiIds.has(i.id)
   );
-  if (pending.length === 0) return sortMediaItems(apiItems);
+  if (pending.length === 0) return sortMediaItems(dedupeMediaById(apiItems));
   const byId = new Map<string, MediaGridItem>();
   for (const item of pending) byId.set(item.id, item);
   for (const item of apiItems) byId.set(item.id, item);
@@ -40,7 +40,7 @@ function patchItems(
     }
     return item;
   });
-  return changed ? sortMediaItems(next) : prev;
+  return changed ? sortMediaItems(dedupeMediaById(next)) : prev;
 }
 
 function processingIdsToResolve(
@@ -91,6 +91,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
   optionsRef.current = options;
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const fetchSeqRef = useRef(0);
 
   const fetchPage = useCallback(
     async (
@@ -98,6 +99,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
       append = false,
       fetchOptions?: { silent?: boolean }
     ) => {
+      const seq = ++fetchSeqRef.current;
       if (!fetchOptions?.silent) setLoading(true);
       try {
         const params = new URLSearchParams();
@@ -111,6 +113,8 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         const res = await fetch(`${base}/api/media?${params}`);
         const data = await res.json();
 
+        if (seq !== fetchSeqRef.current) return;
+
         const apiItems = (data.items ?? []) as MediaGridItem[];
         const prev = itemsRef.current;
 
@@ -122,10 +126,12 @@ export function useMediaList(options: UseMediaListOptions = {}) {
           }
         }
 
+        if (seq !== fetchSeqRef.current) return;
+
         setItems((current) => {
           let next: MediaGridItem[];
           if (append) {
-            next = sortMediaItems([...current, ...apiItems]);
+            next = sortMediaItems(dedupeMediaById([...current, ...apiItems]));
           } else if (fetchOptions?.silent) {
             next = patchItems(current, [...apiItems, ...resolved]);
           } else {
@@ -134,10 +140,13 @@ export function useMediaList(options: UseMediaListOptions = {}) {
               resolved
             );
           }
-          return sortMediaItems(next);
+          return sortMediaItems(dedupeMediaById(next));
         });
-        setCursor(data.nextCursor);
-        setHasMore(data.hasMore ?? false);
+        // 처리 중 폴링은 1페이지만 조회 — cursor를 덮어쓰면 loadMore가 중복 append 함
+        if (!fetchOptions?.silent) {
+          setCursor(data.nextCursor);
+          setHasMore(data.hasMore ?? false);
+        }
       } finally {
         if (!fetchOptions?.silent) setLoading(false);
       }
@@ -165,7 +174,7 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     flushSync(() => {
       setItems((prev) => {
         if (prev.some((i) => i.id === item.id)) return prev;
-        return sortMediaItems([item, ...prev]);
+        return sortMediaItems(dedupeMediaById([item, ...prev]));
       });
     });
   }, []);
