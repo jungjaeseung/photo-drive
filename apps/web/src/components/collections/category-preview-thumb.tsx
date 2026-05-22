@@ -103,7 +103,7 @@ export function CategoryPreviewThumb({
   const [baseUrl, setBaseUrl] = useState<string | undefined>(src);
   const [overlayUrl, setOverlayUrl] = useState<string | undefined>();
   const [overlayVisible, setOverlayVisible] = useState(false);
-  const preloadRef = useRef<HTMLImageElement | null>(null);
+  const transitionGenRef = useRef(0);
 
   useEffect(() => {
     if (!src) {
@@ -118,34 +118,44 @@ export function CategoryPreviewThumb({
       return;
     }
 
-    if (src === baseUrl || src === overlayUrl) return;
+    const visibleSrc =
+      overlayVisible && overlayUrl ? overlayUrl : baseUrl;
+    if (src === visibleSrc) return;
 
-    let cancelled = false;
+    if (overlayUrl === src && !overlayVisible) {
+      const gen = transitionGenRef.current;
+      afterPaint(() => {
+        if (transitionGenRef.current !== gen) return;
+        setOverlayVisible(true);
+      });
+      return;
+    }
+
+    const gen = ++transitionGenRef.current;
     const img = new Image();
-    preloadRef.current = img;
 
-    const showOverlay = () => {
-      if (cancelled) return;
+    const revealOverlay = () => {
+      if (transitionGenRef.current !== gen) return;
       setOverlayUrl(src);
       setOverlayVisible(false);
       afterPaint(() => {
-        if (!cancelled) setOverlayVisible(true);
+        if (transitionGenRef.current !== gen) return;
+        setOverlayVisible(true);
       });
     };
 
-    img.onload = showOverlay;
-    img.onerror = showOverlay;
+    img.onload = revealOverlay;
+    img.onerror = revealOverlay;
 
     const cached = getCachedMediaImageUrl(src);
     img.src = cached ?? src;
-    if (img.complete) showOverlay();
+    if (img.complete) revealOverlay();
 
     return () => {
-      cancelled = true;
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, baseUrl, overlayUrl]);
+  }, [src, baseUrl, overlayUrl, overlayVisible]);
 
   useEffect(() => {
     if (!overlayUrl || !overlayVisible) return;

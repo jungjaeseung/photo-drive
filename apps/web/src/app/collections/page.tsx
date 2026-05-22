@@ -11,7 +11,8 @@ export default function CollectionsPage() {
   const [albums, setAlbums] = useState<AlbumGridItem[]>([]);
   const [draftAlbums, setDraftAlbums] = useState<AlbumGridItem[]>([]);
   const [name, setName] = useState("");
-  const { photoThumb, videoThumb } = useCategoryPreviewRotation();
+  const { photoThumb, videoThumb, photoMediaId, videoMediaId } =
+    useCategoryPreviewRotation();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
@@ -128,6 +129,8 @@ export default function CollectionsPage() {
         <CategoryGrid
           photoThumbnailUrl={photoThumb}
           videoThumbnailUrl={videoThumb}
+          photoMediaId={photoMediaId}
+          videoMediaId={videoMediaId}
         />
       </section>
 

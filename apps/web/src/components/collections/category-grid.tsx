@@ -7,6 +7,8 @@ import Link from "next/link";
 interface CategoryGridProps {
   photoThumbnailUrl?: string;
   videoThumbnailUrl?: string;
+  photoMediaId?: string;
+  videoMediaId?: string;
 }
 
 const categories = [
@@ -27,10 +29,16 @@ const categories = [
 export function CategoryGrid({
   photoThumbnailUrl,
   videoThumbnailUrl,
+  photoMediaId,
+  videoMediaId,
 }: CategoryGridProps) {
   const thumbs = {
     photo: photoThumbnailUrl,
     video: videoThumbnailUrl,
+  };
+  const thumbKeys = {
+    photo: photoMediaId,
+    video: videoMediaId,
   };
 
   return (
@@ -44,6 +52,7 @@ export function CategoryGrid({
             className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900"
           >
             <CategoryPreviewThumb
+              key={thumbKeys[thumbKey] ?? thumb ?? thumbKey}
               src={thumb}
               fallbackIcon={Icon}
               className="transition-transform group-hover:scale-105"

@@ -2,6 +2,8 @@ import { searchRandomReadyMedia } from "@/lib/es";
 import { getMediaAssetUrl } from "@/lib/media-url";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const seed = Date.now();
 

@@ -14,6 +14,8 @@ type PreviewResponse = {
 export function useCategoryPreviewRotation() {
   const [photoThumb, setPhotoThumb] = useState<string | undefined>();
   const [videoThumb, setVideoThumb] = useState<string | undefined>();
+  const [photoMediaId, setPhotoMediaId] = useState<string | undefined>();
+  const [videoMediaId, setVideoMediaId] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
   const lastPhotoIdRef = useRef<string | undefined>(undefined);
@@ -25,13 +27,17 @@ export function useCategoryPreviewRotation() {
   const applyPreview = useCallback((data: PreviewResponse) => {
     setPhotoThumb(data.photoThumbnailUrl);
     setVideoThumb(data.videoThumbnailUrl);
+    setPhotoMediaId(data.photoMediaId);
+    setVideoMediaId(data.videoMediaId);
     lastPhotoIdRef.current = data.photoMediaId;
     lastVideoIdRef.current = data.videoMediaId;
   }, []);
 
   const fetchPreviews = useCallback(
     async (retry = true) => {
-      const res = await fetch(`${base}/api/collections/category-previews`);
+      const res = await fetch(`${base}/api/collections/category-previews`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const data = (await res.json()) as PreviewResponse;
 
@@ -44,7 +50,8 @@ export function useCategoryPreviewRotation() {
 
       if (retry && (samePhoto || sameVideo)) {
         const retryRes = await fetch(
-          `${base}/api/collections/category-previews`
+          `${base}/api/collections/category-previews`,
+          { cache: "no-store" }
         );
         if (retryRes.ok) {
           const retryData = (await retryRes.json()) as PreviewResponse;
@@ -105,5 +112,12 @@ export function useCategoryPreviewRotation() {
     };
   }, [fetchPreviews, startInterval, stopInterval]);
 
-  return { photoThumb, videoThumb, isLoading, refresh };
+  return {
+    photoThumb,
+    videoThumb,
+    photoMediaId,
+    videoMediaId,
+    isLoading,
+    refresh,
+  };
 }
