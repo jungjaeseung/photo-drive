@@ -127,6 +127,48 @@ export async function searchMedia(params: {
   return { items, nextCursor, hasMore };
 }
 
+const DATE_GROUP_MAX = 10_000;
+
+/** KST yyyy-MM-dd 하루치 전체 (그리드 날짜 전체 선택용, sortAt 기준) */
+export async function searchMediaByDateKey(params: {
+  dateKey: string;
+  type?: string;
+  albumId?: string;
+}): Promise<MediaDocument[]> {
+  const es = getEsClient();
+  const dayStart = new Date(`${params.dateKey}T00:00:00+09:00`).toISOString();
+  const dayEnd = new Date(`${params.dateKey}T23:59:59.999+09:00`).toISOString();
+
+  const must: Record<string, unknown>[] = [
+    { bool: { must_not: [{ exists: { field: "deletedAt" } }] } },
+    { range: { sortAt: { gte: dayStart, lte: dayEnd } } },
+  ];
+
+  if (params.type) {
+    must.push({ term: { type: params.type } });
+  }
+  if (params.albumId) {
+    must.push({ term: { albumIds: params.albumId } });
+  }
+
+  const result = await es.search({
+    index: ES_INDEX_MEDIA,
+    body: {
+      size: DATE_GROUP_MAX,
+      query: { bool: { must } },
+      sort: [
+        { sortAt: { order: "desc", unmapped_type: "date", missing: "_last" } },
+        { id: { order: "desc", unmapped_type: "keyword" } },
+      ],
+    },
+  });
+
+  const hits = (result.body.hits.hits ?? []) as Array<{
+    _source: MediaDocument;
+  }>;
+  return hits.map((h) => h._source);
+}
+
 /** 카테고리 썸네일용: ready 미디어 중 랜덤 1건 */
 export async function searchRandomReadyMedia(
   type: "image" | "video",

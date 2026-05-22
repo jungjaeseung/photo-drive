@@ -15,10 +15,18 @@ function getColumnCount(width: number) {
 }
 
 export default function LibraryPage() {
-  const { items, loading, hasMore, loadMore, refresh, prependProcessingItem } =
-    useMediaList();
+  const {
+    items,
+    loading,
+    hasMore,
+    loadMore,
+    refresh,
+    prependProcessingItem,
+    loadItemsForDateKey,
+  } = useMediaList();
   const viewer = useMediaViewer();
-  const { gridMode, handleLongPress } = useMediaGridInteraction();
+  const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
+    useMediaGridInteraction({ loadItemsForDateKey });
   const [columnCount, setColumnCount] = useState(4);
 
   useEffect(() => {
@@ -53,7 +61,8 @@ export default function LibraryPage() {
           onToggleSelect={gridMode.toggleSelect}
           onSelectMany={gridMode.selectMany}
           onDeselectMany={gridMode.deselectMany}
-          onToggleGroup={gridMode.toggleGroup}
+          onToggleDateGroup={handleToggleDateGroup}
+            loadingDateKey={loadingDateKey}
             onLongPress={handleLongPress}
             hasMore={hasMore}
             loadingMore={loading}

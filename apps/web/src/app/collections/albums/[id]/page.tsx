@@ -14,11 +14,13 @@ import { useCallback, useEffect, useState } from "react";
 export default function AlbumDetailPage() {
   const params = useParams();
   const albumId = params.id as string;
-  const { items, loading, hasMore, loadMore, refresh } = useMediaList({
-    albumId,
-  });
+  const { items, loading, hasMore, loadMore, refresh, loadItemsForDateKey } =
+    useMediaList({
+      albumId,
+    });
   const viewer = useMediaViewer();
-  const { gridMode, handleLongPress } = useMediaGridInteraction();
+  const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
+    useMediaGridInteraction({ loadItemsForDateKey });
   const [albumName, setAlbumName] = useState("");
   const [albumCoverMediaId, setAlbumCoverMediaId] = useState<string | undefined>();
 
@@ -64,7 +66,8 @@ export default function AlbumDetailPage() {
           onToggleSelect={gridMode.toggleSelect}
           onSelectMany={gridMode.selectMany}
           onDeselectMany={gridMode.deselectMany}
-          onToggleGroup={gridMode.toggleGroup}
+          onToggleDateGroup={handleToggleDateGroup}
+          loadingDateKey={loadingDateKey}
           onLongPress={handleLongPress}
           hasMore={hasMore}
           loadingMore={loading}

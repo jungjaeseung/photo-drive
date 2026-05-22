@@ -155,6 +155,31 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     fetchPage(undefined, false);
   }, [fetchPage]);
 
+  const loadItemsForDateKey = useCallback(
+    async (dateKey: string): Promise<MediaGridItem[]> => {
+      const params = new URLSearchParams({ date: dateKey });
+      const opts = optionsRef.current;
+      if (opts.type) params.set("type", opts.type);
+      if (opts.albumId) params.set("albumId", opts.albumId);
+
+      const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+      const res = await fetch(`${base}/api/media/by-date?${params}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error("해당 날짜 미디어를 불러오지 못했습니다");
+      }
+      const data = (await res.json()) as { items?: MediaGridItem[] };
+      const apiItems = data.items ?? [];
+
+      setItems((current) =>
+        sortMediaItems(dedupeMediaById([...current, ...apiItems]))
+      );
+      return apiItems;
+    },
+    []
+  );
+
   const prependProcessingItem = useCallback((item: MediaGridItem) => {
     flushSync(() => {
       setItems((prev) => {
@@ -174,5 +199,13 @@ export function useMediaList(options: UseMediaListOptions = {}) {
     return () => clearInterval(interval);
   }, [hasProcessing, fetchPage]);
 
-  return { items, loading, hasMore, loadMore, refresh, prependProcessingItem };
+  return {
+    items,
+    loading,
+    hasMore,
+    loadMore,
+    refresh,
+    prependProcessingItem,
+    loadItemsForDateKey,
+  };
 }

@@ -9,6 +9,7 @@ import {
   sortMediaItems,
 } from "@/lib/media-sort";
 import { useGridDragSelect } from "@/hooks/use-grid-drag-select";
+import { Loader2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
 import { SelectionCheck } from "./selection-check";
@@ -36,6 +37,8 @@ interface MediaGridProps {
   onSelectMany?: (ids: string[]) => void;
   onDeselectMany?: (ids: string[]) => void;
   onToggleGroup?: (ids: string[]) => void;
+  onToggleDateGroup?: (dateKey: string, loadedIds: string[]) => void;
+  loadingDateKey?: string | null;
   onLongPress?: (item: MediaGridItem) => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -44,7 +47,12 @@ interface MediaGridProps {
 
 function groupByDate(
   items: MediaGridItem[]
-): { label: string; itemIds: string[]; items: MediaGridItem[] }[] {
+): {
+  dateKey: string;
+  label: string;
+  itemIds: string[];
+  items: MediaGridItem[];
+}[] {
   const map = new Map<string, MediaGridItem[]>();
   for (const item of sortMediaItems(items)) {
     const key = getKstDateKey(getSortIso(item));
@@ -54,6 +62,7 @@ function groupByDate(
   return Array.from(map.entries())
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([dateKey, groupItems]) => ({
+      dateKey,
       label: formatKstDateLabel(dateKey),
       itemIds: groupItems.map((i) => i.id),
       items: groupItems,
@@ -70,6 +79,8 @@ export function MediaGrid({
   onSelectMany,
   onDeselectMany,
   onToggleGroup,
+  onToggleDateGroup,
+  loadingDateKey = null,
   onLongPress,
   hasMore = false,
   loadingMore = false,
@@ -100,7 +111,7 @@ export function MediaGrid({
   }, []);
 
   type Row =
-    | { kind: "header"; label: string; itemIds: string[] }
+    | { kind: "header"; dateKey: string; label: string; itemIds: string[] }
     | { kind: "row"; items: MediaGridItem[] };
 
   const rows: Row[] = useMemo(() => {
@@ -108,6 +119,7 @@ export function MediaGrid({
     for (const section of sections) {
       result.push({
         kind: "header",
+        dateKey: section.dateKey,
         label: section.label,
         itemIds: section.itemIds,
       });
@@ -222,20 +234,32 @@ export function MediaGrid({
                   {mode === "select" && (
                     <button
                       type="button"
+                      disabled={loadingDateKey === row.dateKey}
                       aria-label={`${row.label} 전체 선택`}
-                      onClick={() => onToggleGroup?.(row.itemIds)}
-                      className="p-0.5"
+                      aria-busy={loadingDateKey === row.dateKey}
+                      onClick={() => {
+                        if (onToggleDateGroup) {
+                          void onToggleDateGroup(row.dateKey, row.itemIds);
+                        } else {
+                          onToggleGroup?.(row.itemIds);
+                        }
+                      }}
+                      className="p-0.5 disabled:opacity-50"
                     >
-                      <SelectionCheck
-                        selected={
-                          row.itemIds.length > 0 &&
-                          row.itemIds.every((id) => selectedIds?.has(id))
-                        }
-                        partial={
-                          row.itemIds.some((id) => selectedIds?.has(id)) &&
-                          !row.itemIds.every((id) => selectedIds?.has(id))
-                        }
-                      />
+                      {loadingDateKey === row.dateKey ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+                      ) : (
+                        <SelectionCheck
+                          selected={
+                            row.itemIds.length > 0 &&
+                            row.itemIds.every((id) => selectedIds?.has(id))
+                          }
+                          partial={
+                            row.itemIds.some((id) => selectedIds?.has(id)) &&
+                            !row.itemIds.every((id) => selectedIds?.has(id))
+                          }
+                        />
+                      )}
                     </button>
                   )}
                 </div>

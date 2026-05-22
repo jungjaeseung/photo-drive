@@ -8,12 +8,20 @@ import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
 
 export default function PhotosOnlyPage() {
-  const { items, loading, hasMore, loadMore, refresh, prependProcessingItem } =
-    useMediaList({
-      type: "image",
-    });
+  const {
+    items,
+    loading,
+    hasMore,
+    loadMore,
+    refresh,
+    prependProcessingItem,
+    loadItemsForDateKey,
+  } = useMediaList({
+    type: "image",
+  });
   const viewer = useMediaViewer();
-  const { gridMode, handleLongPress } = useMediaGridInteraction();
+  const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
+    useMediaGridInteraction({ loadItemsForDateKey });
 
   return (
     <div className="flex h-dvh flex-col">
@@ -35,7 +43,8 @@ export default function PhotosOnlyPage() {
           onToggleSelect={gridMode.toggleSelect}
           onSelectMany={gridMode.selectMany}
           onDeselectMany={gridMode.deselectMany}
-          onToggleGroup={gridMode.toggleGroup}
+          onToggleDateGroup={handleToggleDateGroup}
+          loadingDateKey={loadingDateKey}
           onLongPress={handleLongPress}
           hasMore={hasMore}
           loadingMore={loading}
