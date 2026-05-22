@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
+import { PinchZoomImage } from "@/components/media/pinch-zoom-image";
 import {
   collectNeighborIds,
   loadDecodedImage,
@@ -131,11 +132,15 @@ export function MediaDetail({
   }, [media]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) {
+      touchStartX.current = null;
+      return;
+    }
     touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || e.touches.length > 0) return;
     const diff = e.changedTouches[0].clientX - touchStartX.current;
     if (diff > 60 && hasPrev) onPrev?.();
     if (diff < -60 && hasNext) onNext?.();
@@ -220,8 +225,8 @@ export function MediaDetail({
 
         <div
           className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-4 pt-14"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={media.type === "video" ? handleTouchStart : undefined}
+          onTouchEnd={media.type === "video" ? handleTouchEnd : undefined}
         >
           {originalLoading && isImage && (
             <div className="absolute top-14 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white">
@@ -272,29 +277,15 @@ export function MediaDetail({
               />
             </div>
           ) : (
-            <div className="relative flex max-h-[55vh] max-w-full items-center justify-center lg:max-h-[60vh]">
-              {previewSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewSrc}
-                  alt={media.filename}
-                  className={cn(
-                    "max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]",
-                    originalReady &&
-                      showOriginalLayer &&
-                      "opacity-0 transition-opacity duration-200"
-                  )}
-                />
-              ) : null}
-              {originalReady && showOriginalLayer && media.originalUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={media.originalUrl}
-                  alt={media.filename}
-                  className="absolute max-h-[55vh] max-w-full object-contain opacity-100 lg:max-h-[60vh]"
-                />
-              ) : null}
-            </div>
+            <PinchZoomImage
+              key={media.id}
+              previewSrc={previewSrc}
+              originalSrc={showOriginalLayer ? media.originalUrl : undefined}
+              originalReady={originalReady}
+              alt={media.filename}
+              onSwipePrev={hasPrev ? onPrev : undefined}
+              onSwipeNext={hasNext ? onNext : undefined}
+            />
           )}
         </div>
 
