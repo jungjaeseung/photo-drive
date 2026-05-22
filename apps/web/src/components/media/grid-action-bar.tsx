@@ -6,15 +6,11 @@ import { Button } from "@/components/ui/button";
 import type { MediaGridItem } from "@/components/media/media-grid";
 import type { GridMode } from "@/hooks/use-grid-mode";
 import { useUploadQueue } from "@/hooks/use-upload-queue";
-import {
-  downloadMediaAsZip,
-  formatBytes,
-  type DownloadProgress,
-} from "@/lib/download-zip";
+import { DownloadProgressButton } from "@/components/media/download-progress-button";
+import { downloadMediaAsZip, type DownloadProgress } from "@/lib/download-zip";
 import { removeMediaFromAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
 import {
-  Download,
   FolderMinus,
   Loader2,
   Share2,
@@ -106,21 +102,6 @@ export function GridActionBar({
     } finally {
       setDownloadProgress(null);
     }
-  }
-
-  function downloadProgressLabel(): string {
-    if (!downloadProgress) return "";
-    const partPrefix =
-      downloadProgress.totalParts && downloadProgress.totalParts > 1
-        ? `${downloadProgress.part ?? 1}/${downloadProgress.totalParts} `
-        : "";
-    if (downloadProgress.phase === "compressing") {
-      return `${partPrefix}압축 중…`;
-    }
-    if (downloadProgress.percent != null) {
-      return `${partPrefix}${downloadProgress.percent}%`;
-    }
-    return `${partPrefix}${formatBytes(downloadProgress.loaded)}`;
   }
 
   async function handleDeleteSelected() {
@@ -248,38 +229,11 @@ export function GridActionBar({
                 <Trash2 className="h-5 w-5" />
               )}
             </Button>
-            <Button
-              size={downloading ? "default" : "icon"}
-              className={cn(
-                "shadow-lg",
-                downloading &&
-                  "h-10 min-w-[7.5rem] w-auto gap-2 px-3 transition-[width]"
-              )}
-              disabled={!hasSelection || downloading}
+            <DownloadProgressButton
+              progress={downloadProgress}
+              disabled={!hasSelection}
               onClick={handleDownloadZip}
-              title="원본 ZIP 다운로드"
-            >
-              {downloading && downloadProgress ? (
-                <>
-                  <div className="h-1.5 min-w-[3.5rem] flex-1 overflow-hidden rounded-full bg-white/30">
-                    {downloadProgress.phase === "compressing" ||
-                    downloadProgress.percent == null ? (
-                      <div className="h-full w-full animate-pulse rounded-full bg-white/70" />
-                    ) : (
-                      <div
-                        className="h-full rounded-full bg-white transition-[width] duration-150"
-                        style={{ width: `${downloadProgress.percent}%` }}
-                      />
-                    )}
-                  </div>
-                  <span className="shrink-0 text-xs tabular-nums">
-                    {downloadProgressLabel()}
-                  </span>
-                </>
-              ) : (
-                <Download className="h-5 w-5" />
-              )}
-            </Button>
+            />
             {albumId && (
               <Button
                 size="icon"

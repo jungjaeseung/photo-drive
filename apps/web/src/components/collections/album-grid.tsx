@@ -18,7 +18,11 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { downloadAlbumAsZip } from "@/lib/download-zip";
+import {
+  DownloadProgressButton,
+  DownloadProgressSpinner,
+} from "@/components/media/download-progress-button";
+import { downloadAlbumAsZip, type DownloadProgress } from "@/lib/download-zip";
 import { Download, FolderOpen, GripVertical, Loader2, Trash2 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
 import Link from "next/link";
@@ -188,7 +192,7 @@ function SortableAlbumItem({
           }
         >
           {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <DownloadProgressSpinner />
           ) : (
             <Download className="h-4 w-4" />
           )}
@@ -212,6 +216,8 @@ export function AlbumGrid({
   const [columnCount, setColumnCount] = useState(columnCountProp ?? 3);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] =
+    useState<DownloadProgress | null>(null);
 
   useEffect(() => {
     setItems(albums);
@@ -251,12 +257,19 @@ export function AlbumGrid({
 
   async function handleDownloadAlbum(album: AlbumGridItem) {
     setDownloadingId(album.id);
+    setDownloadProgress({
+      phase: "compressing",
+      loaded: 0,
+      total: null,
+      percent: null,
+    });
     try {
-      await downloadAlbumAsZip(album.id, album.name);
+      await downloadAlbumAsZip(album.id, album.name, setDownloadProgress);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setDownloadingId(null);
+      setDownloadProgress(null);
     }
   }
 
@@ -305,14 +318,33 @@ export function AlbumGrid({
   if (!reorderMode) return grid;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext items={items.map((a) => a.id)} strategy={rectSortingStrategy}>
-        {grid}
-      </SortableContext>
-    </DndContext>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={items.map((a) => a.id)}
+          strategy={rectSortingStrategy}
+        >
+          {grid}
+        </SortableContext>
+      </DndContext>
+      {downloadProgress && (
+        <div className="bottom-above-nav pointer-events-none fixed right-4 z-50">
+          <DownloadProgressButton
+            progress={downloadProgress}
+            onClick={() => {}}
+            title={
+              downloadingId
+                ? items.find((a) => a.id === downloadingId)?.name ?? "다운로드"
+                : "다운로드"
+            }
+            className="pointer-events-auto"
+          />
+        </div>
+      )}
+    </>
   );
 }
