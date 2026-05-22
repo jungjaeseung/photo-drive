@@ -33,6 +33,7 @@ services:
       - PUBLIC_APP_URL=${PUBLIC_APP_URL:-https://3harang.ddns.net}
       - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET}
       - AUTH_TRUST_HOST=true
+      - AUTH_URL=${AUTH_URL:-${PUBLIC_APP_URL:-https://3harang.ddns.net}/photos}
     volumes:
       - ${STORAGE_HOST_PATH:-./storage}:/storage
     depends_on:

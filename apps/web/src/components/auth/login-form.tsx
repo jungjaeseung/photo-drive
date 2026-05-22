@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { withBasePath } from "@/lib/paths";
+import { normalizeAppPath } from "@/lib/paths";
 import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +11,9 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "1";
-  const callbackUrl = searchParams.get("callbackUrl") ?? withBasePath("/");
+  const callbackUrl = normalizeAppPath(
+    searchParams.get("callbackUrl") ?? "/"
+  );
 
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");

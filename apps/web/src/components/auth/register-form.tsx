@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { withBasePath } from "@/lib/paths";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -37,7 +36,7 @@ export function RegisterForm() {
         setError(data.error ?? "가입에 실패했습니다");
         return;
       }
-      router.push(withBasePath("/login?registered=1"));
+      router.push("/login?registered=1");
     } catch {
       setError("가입에 실패했습니다");
     } finally {
