@@ -12,7 +12,14 @@ import {
 } from "@/lib/download-zip";
 import { removeMediaFromAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
-import { Download, FolderMinus, Loader2, Share2, Upload } from "lucide-react";
+import {
+  Download,
+  FolderMinus,
+  Loader2,
+  Share2,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useRef, useState } from "react";
 
 interface GridActionBarProps {
@@ -27,6 +34,8 @@ interface GridActionBarProps {
   onItemUploaded?: (item: MediaGridItem) => void;
   onAlbumAdded?: () => void;
   onRemovedFromAlbum?: () => void;
+  /** 선택 항목 영구 삭제 후 목록 갱신 */
+  onDeleted?: () => void;
 }
 
 export function GridActionBar({
@@ -39,6 +48,7 @@ export function GridActionBar({
   onItemUploaded,
   onAlbumAdded,
   onRemovedFromAlbum,
+  onDeleted,
 }: GridActionBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -49,6 +59,8 @@ export function GridActionBar({
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgress | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const downloading = downloadProgress !== null;
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -111,6 +123,35 @@ export function GridActionBar({
     return formatBytes(downloadProgress.loaded);
   }
 
+  async function handleDeleteSelected() {
+    if (!hasSelection) return;
+    if (
+      !confirm(
+        `선택한 ${selectedIds.size}개 항목을 삭제할까요?\n(보관함·앨범에서 모두 제거됩니다)`
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      for (const id of selectedIds) {
+        const res = await fetch(`${base}/api/media/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "삭제 실패");
+        }
+      }
+      onDeleted?.();
+      onModeChange("detail");
+    } catch (e) {
+      setDeleteError(String(e));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleRemoveFromAlbum() {
     if (!albumId || !hasSelection) return;
     if (
@@ -136,8 +177,8 @@ export function GridActionBar({
 
   return (
     <>
-      <div className="bottom-above-nav fixed right-4 z-50 flex items-center gap-2">
-        <div className="flex rounded-full border border-zinc-200/80 bg-white/95 p-0.5 shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95">
+      <div className="bottom-above-nav fixed right-4 z-50 flex items-end gap-2">
+        <div className="flex shrink-0 rounded-full border border-zinc-200/80 bg-white/95 p-0.5 shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95">
           <button
             type="button"
             onClick={() => onModeChange("detail")}
@@ -190,7 +231,7 @@ export function GridActionBar({
         )}
 
         {mode === "select" && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col items-end gap-2">
             <Button
               size={downloading ? "default" : "icon"}
               className={cn(
@@ -248,16 +289,30 @@ export function GridActionBar({
             >
               <Share2 className="h-5 w-5" />
             </Button>
+            <Button
+              size="icon"
+              variant="destructive"
+              className="shadow-lg"
+              disabled={!hasSelection || deleting}
+              onClick={handleDeleteSelected}
+              title="선택 항목 삭제"
+            >
+              {deleting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Trash2 className="h-5 w-5" />
+              )}
+            </Button>
           </div>
         )}
       </div>
 
-      {(uploadError || removeError || downloadError) && (
+      {(uploadError || removeError || downloadError || deleteError) && (
         <p
           className="fixed right-4 z-50 max-w-[220px] rounded bg-red-500/90 px-2 py-1 text-xs text-white"
           style={{ bottom: "calc(var(--fab-bottom) + 4.5rem)" }}
         >
-          {uploadError ?? removeError ?? downloadError}
+          {uploadError ?? removeError ?? downloadError ?? deleteError}
         </p>
       )}
 

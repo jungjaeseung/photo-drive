@@ -1,4 +1,4 @@
-/** Parse EXIF, ffprobe, or ISO date strings into ISO timestamps. */
+/** Parse EXIF, ffprobe reference strings (debug / worker reference only). */
 export function parseMediaDate(value: unknown): string | undefined {
   if (value == null) return undefined;
 
@@ -14,7 +14,6 @@ export function parseMediaDate(value: unknown): string | undefined {
   const raw = String(value).trim();
   if (!raw) return undefined;
 
-  // EXIF "YYYY:MM:DD HH:mm:ss" — 타임존 없음, 한국 현지 시각으로 해석
   const exifMatch = raw.match(
     /^(\d{4}):(\d{2}):(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?/
   );
@@ -22,7 +21,6 @@ export function parseMediaDate(value: unknown): string | undefined {
     return kstLocalPartsToUtcIso(exifMatch);
   }
 
-  // "YYYY-MM-DDTHH:mm:ss" without Z/offset — 현지(KST) 시각
   const naiveIso = raw.match(
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
   );
@@ -34,7 +32,20 @@ export function parseMediaDate(value: unknown): string | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 }
 
-/** 한국 현지 시각(타임존 없음) → UTC ISO */
+/** 저장된 UTC ISO 필드 파싱 (takenAt / sortAt / uploadedAt) */
+export function parseUtcIso(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+  }
+  return undefined;
+}
+
+/** 한국 현지 시각(타임존 없음) → UTC ISO — EXIF 참고용 */
 function kstLocalPartsToUtcIso(
   m: RegExpMatchArray
 ): string | undefined {
@@ -54,7 +65,10 @@ export function pickTakenAtInOrder(
   const ceilingMs = ceiling.getTime();
 
   for (const candidate of candidates) {
-    const iso = parseMediaDate(candidate);
+    const iso =
+      typeof candidate === "number"
+        ? parseUtcIso(new Date(candidate))
+        : parseMediaDate(candidate);
     if (!iso) continue;
     const ms = new Date(iso).getTime();
     if (!Number.isNaN(ms) && ms <= ceilingMs) return iso;
@@ -71,6 +85,7 @@ export function pickTakenAt(
 }
 
 const MIN_CAPTURE_MS = new Date("1980-01-01T00:00:00.000Z").getTime();
+const KST_TIMEZONE = "Asia/Seoul";
 
 /** 한국 표준시 (DST 없음) */
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -83,58 +98,103 @@ export function isPlausibleCaptureDate(iso: string): boolean {
 }
 
 /**
- * 그리드·ES 정렬용 통합 시각: plausible takenAt → uploadedAt → createdAt
- * (worker가 넣은 takenAt 그대로 — 업로드일로 덮어쓰지 않음)
+ * ES sortAt / 업로드 시 설정: plausible takenAt → uploadedAt → createdAt
+ * (takenAt은 file.lastModified UTC — EXIF 변환 없음)
  */
 export function computeSortAt(doc: {
-  type?: string;
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): string {
   if (doc.takenAt) {
-    const iso = parseMediaDate(doc.takenAt);
+    const iso = parseUtcIso(doc.takenAt);
     if (iso && isPlausibleCaptureDate(iso)) return iso;
   }
   if (doc.uploadedAt) {
-    const iso = parseMediaDate(doc.uploadedAt);
+    const iso = parseUtcIso(doc.uploadedAt);
     if (iso) return iso;
   }
   if (doc.createdAt) {
-    const iso = parseMediaDate(doc.createdAt);
+    const iso = parseUtcIso(doc.createdAt);
     if (iso) return iso;
   }
   return new Date(0).toISOString();
 }
 
-/**
- * 화면 정렬·날짜 구간 — 항상 takenAt 기준 재계산
- * (ES sortAt는 백필/색인용, 잘못 백필된 값이 UI에 남지 않게 함)
- */
-export function getEffectiveSortIso(doc: {
-  type?: string;
+/** ES·클라이언트 정렬용 UTC ISO (저장값 우선, 재계산 없음) */
+export function getSortIso(doc: {
   sortAt?: string | null;
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): string {
+  const sortAt = doc.sortAt ? parseUtcIso(doc.sortAt) : undefined;
+  if (sortAt && isPlausibleCaptureDate(sortAt)) return sortAt;
+  const takenAt = doc.takenAt ? parseUtcIso(doc.takenAt) : undefined;
+  if (takenAt && isPlausibleCaptureDate(takenAt)) return takenAt;
   return computeSortAt(doc);
 }
 
-export function getEffectiveSortMillis(doc: {
-  type?: string;
+export function getSortMillis(doc: {
   sortAt?: string | null;
   takenAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
-  exif?: Record<string, unknown> | null;
 }): number {
-  return new Date(getEffectiveSortIso(doc)).getTime();
+  return new Date(getSortIso(doc)).getTime();
 }
 
-/** Client File.lastModified → initial takenAt before worker metadata pass. */
+/** KST 기준 yyyy-MM-dd (그리드 날짜 구간·필터용) */
+export function getKstDateKey(iso: string): string {
+  const ms = new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return "1970-01-01";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: KST_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(ms));
+}
+
+/** yyyy-MM-dd → yyyy년 M월 d일 */
+export function formatKstDateLabel(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  return `${y}년 ${m}월 ${d}일`;
+}
+
+/** UTC ISO → KST 표시 문자열 */
+export function formatKstDateTime(iso: string): string {
+  const ms = new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return iso;
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: KST_TIMEZONE,
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(new Date(ms));
+}
+
+/** @deprecated Use getSortIso */
+export function getEffectiveSortIso(doc: {
+  sortAt?: string | null;
+  takenAt?: string | null;
+  uploadedAt?: string | null;
+  createdAt?: string | null;
+}): string {
+  return getSortIso(doc);
+}
+
+/** @deprecated Use getSortMillis */
+export function getEffectiveSortMillis(doc: {
+  sortAt?: string | null;
+  takenAt?: string | null;
+  uploadedAt?: string | null;
+  createdAt?: string | null;
+}): number {
+  return getSortMillis(doc);
+}
+
+/** Client File.lastModified → upload takenAt (UTC ISO) */
 export function takenAtFromFileLastModified(
   lastModifiedMs: number,
   uploadedAt: Date = new Date()

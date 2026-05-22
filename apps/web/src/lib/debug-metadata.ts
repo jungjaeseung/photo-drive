@@ -4,11 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import {
-  computeSortAt,
-  getEffectiveSortIso,
-  getEffectiveSortMillis,
+  formatKstDateTime,
+  getKstDateKey,
   getMediaDir,
   getRelativeMediaPath,
+  getSortIso,
+  getSortMillis,
   pickTakenAtInOrder,
   type MediaDocument,
 } from "@photo-drive/shared";
@@ -33,74 +34,59 @@ const IMAGE_EXIF_DATE_KEYS = [
   "DateTime",
   "FileModifyDate",
   "FileCreateDate",
-  "SubSecDateTimeOriginal",
-  "SubSecCreateDate",
-  "SubSecDateTimeDigitized",
 ] as const;
 
-function takenAtFromExif(
-  exif: Record<string, unknown> | null | undefined,
-  fallback: string,
-  notAfter: Date
-): string {
-  if (!exif) return fallback;
-
-  const candidates: unknown[] = [];
-  const seen = new Set<unknown>();
-
-  function add(value: unknown) {
-    if (value == null || seen.has(value)) return;
-    seen.add(value);
-    candidates.push(value);
-  }
-
-  for (const key of IMAGE_EXIF_DATE_KEYS) {
-    add(exif[key]);
-  }
-
-  for (const [key, value] of Object.entries(exif)) {
-    if (/date|time|created|modified|digitized/i.test(key)) {
-      add(value);
-    }
-  }
-
-  return pickTakenAtInOrder([...candidates, fallback], { notAfter }) ?? fallback;
+function exifDateCandidates(
+  exif: Record<string, unknown> | null
+): Record<string, unknown> {
+  if (!exif) return {};
+  return IMAGE_EXIF_DATE_KEYS.reduce(
+    (acc, key) => {
+      if (exif[key] != null) acc[key] = exif[key];
+      return acc;
+    },
+    {} as Record<string, unknown>
+  );
 }
 
-function takenAtFromFfprobe(
+/** EXIF/ffprobe만 참고 — 저장 takenAt은 변경하지 않음 */
+function exifTakenAtIfUsed(
+  exif: Record<string, unknown> | null,
+  fallback: string,
+  notAfter: Date
+): string | undefined {
+  if (!exif) return undefined;
+  const candidates: unknown[] = [];
+  for (const key of IMAGE_EXIF_DATE_KEYS) {
+    if (exif[key] != null) candidates.push(exif[key]);
+  }
+  for (const [key, value] of Object.entries(exif)) {
+    if (/date|time|created|modified|digitized/i.test(key)) {
+      candidates.push(value);
+    }
+  }
+  return pickTakenAtInOrder([...candidates, fallback], { notAfter });
+}
+
+function ffprobeTakenAtIfUsed(
   probe: {
     format?: { tags?: Record<string, string | undefined> };
     streams?: { tags?: Record<string, string | undefined> }[];
   },
   fallback: string,
   notAfter: Date
-): string {
+): string | undefined {
   const formatTags = probe.format?.tags ?? {};
-  const streamDates: unknown[] = [];
-  for (const stream of probe.streams ?? []) {
-    if (stream.tags?.creation_time) streamDates.push(stream.tags.creation_time);
-    if (stream.tags?.date) streamDates.push(stream.tags.date);
-  }
-
   const candidates: unknown[] = [
     formatTags.creation_time,
     formatTags["com.apple.quicktime.creationdate"],
     formatTags.date,
-    formatTags["DATE"],
-    ...streamDates,
-    fallback,
   ];
-
-  for (const [key, value] of Object.entries(formatTags)) {
-    if (/date|time|created/i.test(key) && value) candidates.push(value);
-  }
   for (const stream of probe.streams ?? []) {
-    for (const [key, value] of Object.entries(stream.tags ?? {})) {
-      if (/date|time|created/i.test(key) && value) candidates.push(value);
-    }
+    if (stream.tags?.creation_time) candidates.push(stream.tags.creation_time);
+    if (stream.tags?.date) candidates.push(stream.tags.date);
   }
-
-  return pickTakenAtInOrder(candidates, { notAfter }) ?? fallback;
+  return pickTakenAtInOrder([...candidates, fallback], { notAfter });
 }
 
 async function ffprobeBuffer(
@@ -146,18 +132,16 @@ export interface DebugMetadataPreview {
     lastModified: number;
     lastModifiedIso: string;
   };
-  /** 업로드 API 직후 ES에 넣을 문서 (실제 저장 안 함) */
   initialDocument: MediaDocument;
-  /** 저장 시 사용될 경로 미리보기 */
   previewPaths: { storageRoot: string; dir: string; relativeOriginal: string };
-  /** 워커 processImage / processVideo 후 예상 필드 */
+  /** 워커 후 ES 스냅샷 (takenAt/sortAt 유지) */
   afterWorker: Record<string, unknown> | null;
   workerError?: string;
-  /** 그리드 정렬에 쓰이는 값 */
   displaySort: {
-    effectiveSortIso: string;
-    effectiveSortMillis: number;
+    sortIsoUtc: string;
+    sortMillis: number;
     kstLabel: string;
+    kstDateKey: string;
   };
 }
 
@@ -211,65 +195,62 @@ export async function previewUploadMetadata(params: {
         })
         .catch(() => null)) as Record<string, unknown> | null;
 
-      const takenAt = takenAtFromExif(
+      const exifWouldBe = exifTakenAtIfUsed(
         exif,
         initialDocument.takenAt,
         uploadedAt
       );
-      const sortAt = computeSortAt({
-        type: "image",
-        takenAt,
-        uploadedAt: initialDocument.uploadedAt,
-        createdAt: initialDocument.createdAt,
-        exif: exif ?? undefined,
-      });
 
       afterWorker = {
         status: "ready",
-        takenAt,
-        sortAt,
+        takenAt: initialDocument.takenAt,
+        sortAt: initialDocument.sortAt,
+        takenAtDateKst: initialDocument.takenAtDateKst,
+        note: "takenAt/sortAt는 업로드 값 유지 (EXIF로 덮어쓰지 않음)",
+        exifReference: {
+          dateCandidates: exifDateCandidates(exif),
+          wouldBeTakenAtIfOldLogic: exifWouldBe,
+          wouldBeTakenAtKst: exifWouldBe
+            ? formatKstDateTime(exifWouldBe)
+            : undefined,
+        },
         exif: exif ?? undefined,
-        exifDateCandidates: IMAGE_EXIF_DATE_KEYS.reduce(
-          (acc, key) => {
-            if (exif?.[key] != null) acc[key] = exif[key];
-            return acc;
-          },
-          {} as Record<string, unknown>
-        ),
       };
     } catch (e) {
       workerError = String(e);
     }
   } else {
     const probe = await ffprobeBuffer(params.buffer, extension);
-    if (probe && !("error" in probe)) {
+    if (probe) {
       const videoStream = probe.streams?.find((s) => s.codec_type === "video");
-      const takenAt = takenAtFromFfprobe(
+      const ffWouldBe = ffprobeTakenAtIfUsed(
         probe,
         initialDocument.takenAt,
         uploadedAt
       );
-      const sortAt = computeSortAt({
-        type: "video",
-        takenAt,
-        uploadedAt: initialDocument.uploadedAt,
-        createdAt: initialDocument.createdAt,
-      });
 
       afterWorker = {
         status: "ready",
-        takenAt,
-        sortAt,
+        takenAt: initialDocument.takenAt,
+        sortAt: initialDocument.sortAt,
+        takenAtDateKst: initialDocument.takenAtDateKst,
+        note: "takenAt/sortAt는 업로드 값 유지 (ffprobe로 덮어쓰지 않음)",
+        ffprobeReference: {
+          wouldBeTakenAtIfOldLogic: ffWouldBe,
+          wouldBeTakenAtKst: ffWouldBe
+            ? formatKstDateTime(ffWouldBe)
+            : undefined,
+          formatTags: probe.format?.tags,
+          streamTags: probe.streams
+            ?.filter((s) => s.codec_type === "video")
+            .map((s) => s.tags),
+        },
         duration: probe.format?.duration
           ? parseFloat(probe.format.duration)
           : undefined,
         width: videoStream?.width,
         height: videoStream?.height,
         codec: videoStream?.codec_name,
-        ffprobeFormatTags: probe.format?.tags,
-        ffprobeStreamTags: probe.streams
-          ?.filter((s) => s.codec_type === "video")
-          .map((s) => s.tags),
       };
     } else {
       workerError = "ffprobe unavailable (install ffmpeg on server)";
@@ -282,22 +263,11 @@ export async function previewUploadMetadata(params: {
     }
   }
 
-  const docForSort = afterWorker
-    ? {
-        type: mediaType,
-        takenAt: String(afterWorker.takenAt),
-        uploadedAt: initialDocument.uploadedAt,
-        createdAt: initialDocument.createdAt,
-        sortAt: afterWorker.sortAt as string | undefined,
-        exif: afterWorker.exif as Record<string, unknown> | undefined,
-      }
-    : initialDocument;
-
-  const effectiveSortIso = getEffectiveSortIso(docForSort);
-  const effectiveSortMillis = getEffectiveSortMillis(docForSort);
+  const sortIsoUtc = getSortIso(initialDocument);
+  const sortMillis = getSortMillis(initialDocument);
 
   return {
-    note: "저장·ES 인덱싱·워커 큐 없음. 미리보기만 합니다.",
+    note: "저장·ES 인덱싱·워커 큐 없음. takenAt은 file.lastModified(UTC), 표시는 KST.",
     file: {
       name: params.filename,
       mimeType: params.mimeType,
@@ -317,13 +287,10 @@ export async function previewUploadMetadata(params: {
     afterWorker,
     workerError,
     displaySort: {
-      effectiveSortIso,
-      effectiveSortMillis,
-      kstLabel: new Date(effectiveSortMillis).toLocaleString("ko-KR", {
-        timeZone: "Asia/Seoul",
-        dateStyle: "medium",
-        timeStyle: "medium",
-      }),
+      sortIsoUtc,
+      sortMillis,
+      kstLabel: formatKstDateTime(sortIsoUtc),
+      kstDateKey: getKstDateKey(sortIsoUtc),
     },
   };
 }

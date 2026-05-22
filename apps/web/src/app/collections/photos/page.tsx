@@ -50,6 +50,7 @@ export default function PhotosOnlyPage() {
         }}
         onUploaded={refresh}
         onAlbumAdded={refresh}
+        onDeleted={refresh}
       />
       <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>

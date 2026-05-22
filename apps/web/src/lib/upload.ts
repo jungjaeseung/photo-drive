@@ -7,6 +7,7 @@ import {
   IMAGE_MIME_PREFIX,
   VIDEO_MIME_PREFIX,
   computeSortAt,
+  getKstDateKey,
   takenAtFromFileLastModified,
   type MediaDocument,
   type MediaType,
@@ -64,7 +65,6 @@ export function buildInitialMediaDoc(params: {
     params.uploadedAt
   );
   const sortAt = computeSortAt({
-    type: params.type,
     takenAt,
     uploadedAt: now,
     createdAt: now,
@@ -82,6 +82,7 @@ export function buildInitialMediaDoc(params: {
     createdAt: now,
     takenAt,
     sortAt,
+    takenAtDateKst: getKstDateKey(takenAt),
     uploadedAt: now,
     albumIds: [],
     favorite: false,

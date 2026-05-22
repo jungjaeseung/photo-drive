@@ -23,6 +23,7 @@ const mediaMappings = {
     createdAt: { type: "date" },
     takenAt: { type: "date" },
     sortAt: { type: "date" },
+    takenAtDateKst: { type: "keyword" },
     uploadedAt: { type: "date" },
     albumIds: { type: "keyword" },
     favorite: { type: "boolean" },

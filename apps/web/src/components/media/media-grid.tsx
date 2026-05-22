@@ -1,10 +1,13 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { format, parseISO } from "date-fns";
-import { ko } from "date-fns/locale";
 import type { GridMode } from "@/hooks/use-grid-mode";
-import { getEffectiveSortIso, sortMediaItems } from "@/lib/media-sort";
+import {
+  formatKstDateLabel,
+  getKstDateKey,
+  getSortIso,
+  sortMediaItems,
+} from "@/lib/media-sort";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
 import { SelectionCheck } from "./selection-check";
@@ -41,14 +44,14 @@ function groupByDate(
 ): { label: string; itemIds: string[]; items: MediaGridItem[] }[] {
   const map = new Map<string, MediaGridItem[]>();
   for (const item of sortMediaItems(items)) {
-    const key = format(parseISO(getEffectiveSortIso(item)), "yyyy-MM-dd");
+    const key = getKstDateKey(getSortIso(item));
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(item);
   }
   return Array.from(map.entries())
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, groupItems]) => ({
-      label: format(parseISO(date), "yyyy년 M월 d일", { locale: ko }),
+    .map(([dateKey, groupItems]) => ({
+      label: formatKstDateLabel(dateKey),
       itemIds: groupItems.map((i) => i.id),
       items: groupItems,
     }));

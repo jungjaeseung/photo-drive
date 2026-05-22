@@ -98,9 +98,15 @@ export default function DebugMetadataPage() {
                   )}
                 </p>
                 <p className="mt-1 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  UTC{" "}
                   {String(
-                    (preview.displaySort as { effectiveSortIso?: string })
-                      .effectiveSortIso
+                    (preview.displaySort as { sortIsoUtc?: string }).sortIsoUtc
+                  )}
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  KST 날짜 키:{" "}
+                  {String(
+                    (preview.displaySort as { kstDateKey?: string }).kstDateKey
                   )}
                 </p>
               </div>

@@ -4,14 +4,12 @@ import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   getMediaDir,
-  computeSortAt,
   getRelativeMediaPath,
   VIDEO_PREVIEW_SECONDS,
 } from "@photo-drive/shared";
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
-import { takenAtFromFfprobe } from "./media-date.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -65,8 +63,6 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     const height = videoStream?.height;
     const codec = videoStream?.codec_name;
     const resolution = width && height ? `${width}x${height}` : undefined;
-
-    const takenAt = takenAtFromFfprobe(probe, doc.takenAt, uploadedAt);
 
     const posterJpg = path.join(dir, "poster-temp.jpg");
     const posterPath = path.join(dir, "poster.webp");
@@ -125,13 +121,7 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
       height,
       codec,
       resolution,
-      takenAt,
-      sortAt: computeSortAt({
-        type: "video",
-        takenAt,
-        uploadedAt: doc.uploadedAt,
-        createdAt: doc.createdAt,
-      }),
+      sortAt: doc.sortAt ?? doc.takenAt,
     };
 
     await writeFile(

@@ -71,6 +71,7 @@ export default function AlbumDetailPage() {
         albumId={albumId}
         onAlbumAdded={refresh}
         onRemovedFromAlbum={refresh}
+        onDeleted={refresh}
       />
       <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>

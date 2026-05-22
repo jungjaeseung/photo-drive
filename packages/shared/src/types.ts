@@ -18,8 +18,10 @@ export interface MediaDocument {
   sha256: string;
   createdAt: string;
   takenAt: string;
-  /** 그리드·ES 정렬용 통합 시각 (촬영/캡처/업로드 fallback 반영) */
+  /** 그리드·ES 정렬용 UTC 시각 (보통 takenAt과 동일) */
   sortAt?: string;
+  /** KST 기준 yyyy-MM-dd — 일별 필터용 */
+  takenAtDateKst?: string;
   uploadedAt: string;
   albumIds: string[];
   favorite: boolean;

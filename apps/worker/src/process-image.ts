@@ -5,14 +5,12 @@ import {
   getRelativeMediaPath,
   MEDIUM_MAX_SIZE,
   THUMB_MAX_SIZE,
-  computeSortAt,
   type MediaDocument,
 } from "@photo-drive/shared";
 import exifr from "exifr";
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
-import { takenAtFromExif } from "./media-date.js";
 
 export async function processImage(mediaId: string, storageRoot?: string): Promise<void> {
   const root = storageRoot ?? getStorageRoot();
@@ -34,8 +32,6 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
         xmp: true,
       })
       .catch(() => null)) as Record<string, unknown> | null;
-
-    const takenAt = takenAtFromExif(exif, doc.takenAt, uploadedAt);
 
     const image = sharp(originalFull).rotate();
     const metadata = await image.metadata();
@@ -70,14 +66,7 @@ export async function processImage(mediaId: string, storageRoot?: string): Promi
       previewPath: mediumRel,
       width: metadata.width,
       height: metadata.height,
-      takenAt,
-      sortAt: computeSortAt({
-        type: doc.type,
-        takenAt,
-        uploadedAt: doc.uploadedAt,
-        createdAt: doc.createdAt,
-        exif: exif ?? undefined,
-      }),
+      sortAt: doc.sortAt ?? doc.takenAt,
       exif: exif ? exif : undefined,
     };
 

@@ -67,6 +67,7 @@ export default function LibraryPage() {
         onItemUploaded={prependProcessingItem}
         onUploaded={refresh}
         onAlbumAdded={refresh}
+        onDeleted={refresh}
       />
       <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
     </div>
