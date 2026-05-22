@@ -11,6 +11,7 @@ import {
   CloudDownload,
   Download,
   FolderPlus,
+  ImageIcon,
   Trash2,
   X,
 } from "lucide-react";
@@ -51,6 +52,9 @@ interface MediaDetailProps {
   onNext?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
+  albumId?: string;
+  albumCoverMediaId?: string;
+  onSetAlbumCover?: () => void | Promise<void>;
 }
 
 export function MediaDetail({
@@ -65,11 +69,15 @@ export function MediaDetail({
   onNext,
   hasPrev = false,
   hasNext = false,
+  albumId,
+  albumCoverMediaId,
+  onSetAlbumCover,
 }: MediaDetailProps) {
   const [originalReady, setOriginalReady] = useState(false);
   const [originalLoading, setOriginalLoading] = useState(false);
   const [playOriginalVideo, setPlayOriginalVideo] = useState(false);
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
+  const [settingCover, setSettingCover] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +193,21 @@ export function MediaDetail({
   const canSave =
     !!(media.originalUrl || media.previewUrl || media.videoPreviewUrl);
 
+  const showSetCover = !!albumId && !!onSetAlbumCover;
+  const isCurrentCover = !!albumCoverMediaId && media.id === albumCoverMediaId;
+  const canSetCover =
+    showSetCover && media.status === "ready" && !isCurrentCover && !settingCover;
+
+  async function handleSetAlbumCover() {
+    if (!canSetCover || !onSetAlbumCover) return;
+    setSettingCover(true);
+    try {
+      await onSetAlbumCover();
+    } finally {
+      setSettingCover(false);
+    }
+  }
+
   const stripWindow = 5;
   const stripStart = Math.max(0, currentIndex - stripWindow);
   const stripEnd = Math.min(navItems.length, currentIndex + stripWindow + 1);
@@ -201,6 +224,23 @@ export function MediaDetail({
         </DialogClose>
 
         <div className="absolute right-4 top-4 z-30 flex gap-2">
+          {showSetCover && (
+            <Button
+              size="icon"
+              variant="secondary"
+              disabled={!canSetCover}
+              onClick={handleSetAlbumCover}
+              title={
+                isCurrentCover
+                  ? "현재 앨범 썸네일"
+                  : media.status !== "ready"
+                    ? "처리 중인 항목은 썸네일로 지정할 수 없습니다"
+                    : "앨범 썸네일로 사용"
+              }
+            >
+              <ImageIcon className="h-5 w-5" />
+            </Button>
+          )}
           {onDelete && (
             <Button
               size="icon"

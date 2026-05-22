@@ -1,4 +1,8 @@
-import { syncAlbumCover } from "@/lib/album-cover";
+import {
+  onCoverMediaRemoved,
+  refreshAlbumMediaCount,
+  setAlbumCoverIfEmpty,
+} from "@/lib/album-cover";
 import {
   appendAlbumToMediaBulk,
   getAlbumById,
@@ -43,9 +47,15 @@ export async function POST(
     );
   }
 
+  const hadNoCover = !album.coverMediaId;
+
   const updated = await appendAlbumToMediaBulk(albumId, mediaIds);
   await refreshMediaIndex();
-  await syncAlbumCover(albumId);
+
+  if (hadNoCover && mediaIds[0]) {
+    await setAlbumCoverIfEmpty(albumId, mediaIds[0]);
+  }
+  await refreshAlbumMediaCount(albumId);
 
   return NextResponse.json({ ok: true, updated, total: mediaIds.length });
 }
@@ -55,6 +65,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: albumId } = await params;
+  const album = await getAlbumById(albumId);
+  if (!album) {
+    return NextResponse.json({ error: "album not found" }, { status: 404 });
+  }
+
   const { searchParams } = request.nextUrl;
 
   let mediaIds = searchParams.getAll("mediaId");
@@ -70,7 +85,12 @@ export async function DELETE(
 
   const updated = await removeAlbumFromMediaBulk(albumId, mediaIds);
   await refreshMediaIndex();
-  await syncAlbumCover(albumId);
+
+  if (album.coverMediaId && mediaIds.includes(album.coverMediaId)) {
+    await onCoverMediaRemoved(albumId, album.coverMediaId);
+  } else {
+    await refreshAlbumMediaCount(albumId);
+  }
 
   return NextResponse.json({ ok: true, updated, total: mediaIds.length });
 }

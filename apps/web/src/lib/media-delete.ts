@@ -1,6 +1,10 @@
-import { syncAlbumCover } from "@/lib/album-cover";
+import {
+  onCoverMediaRemoved,
+  refreshAlbumMediaCount,
+} from "@/lib/album-cover";
 import {
   collectAlbumIdsForMediaIds,
+  getAlbumById,
   markMediaDeletingBulk,
   refreshMediaIndex,
 } from "@/lib/es";
@@ -27,7 +31,17 @@ export async function deleteMediaItems(
   await markMediaDeletingBulk(deletableIds, deletedAt);
   await refreshMediaIndex();
 
-  await Promise.all([...albumIds].map((albumId) => syncAlbumCover(albumId)));
+  const deletableSet = new Set(deletableIds);
+  for (const albumId of albumIds) {
+    const album = await getAlbumById(albumId);
+    if (!album) continue;
+
+    if (album.coverMediaId && deletableSet.has(album.coverMediaId)) {
+      await onCoverMediaRemoved(albumId, album.coverMediaId);
+    } else {
+      await refreshAlbumMediaCount(albumId);
+    }
+  }
 
   if (deletableIds.length === 1) {
     await enqueueMediaJob("deleteMedia", {

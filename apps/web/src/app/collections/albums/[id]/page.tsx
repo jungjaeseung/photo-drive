@@ -9,7 +9,7 @@ import { useMediaList } from "@/hooks/use-media-list";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function AlbumDetailPage() {
   const params = useParams();
@@ -20,14 +20,20 @@ export default function AlbumDetailPage() {
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress } = useMediaGridInteraction();
   const [albumName, setAlbumName] = useState("");
+  const [albumCoverMediaId, setAlbumCoverMediaId] = useState<string | undefined>();
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-  useEffect(() => {
-    fetch(`${base}/api/albums/${albumId}`)
-      .then((r) => r.json())
-      .then((d) => setAlbumName(d.name ?? ""));
+  const loadAlbumMeta = useCallback(async () => {
+    const res = await fetch(`${base}/api/albums/${albumId}`);
+    const d = await res.json();
+    setAlbumName(d.name ?? "");
+    setAlbumCoverMediaId(d.coverMediaId);
   }, [albumId, base]);
+
+  useEffect(() => {
+    void loadAlbumMeta();
+  }, [loadAlbumMeta]);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -75,7 +81,18 @@ export default function AlbumDetailPage() {
         onRemovedFromAlbum={refresh}
         onDeleted={refresh}
       />
-      <MediaViewerLayer viewer={viewer} onDeleted={refresh} />
+      <MediaViewerLayer
+        viewer={viewer}
+        onDeleted={() => {
+          refresh();
+          void loadAlbumMeta();
+        }}
+        albumId={albumId}
+        albumCoverMediaId={albumCoverMediaId}
+        onAlbumCoverChange={(coverMediaId) => {
+          setAlbumCoverMediaId(coverMediaId);
+        }}
+      />
     </div>
   );
 }

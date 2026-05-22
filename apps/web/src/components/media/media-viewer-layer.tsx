@@ -11,9 +11,18 @@ import { useEffect, useRef } from "react";
 interface MediaViewerLayerProps {
   viewer: MediaViewer;
   onDeleted?: () => void;
+  albumId?: string;
+  albumCoverMediaId?: string;
+  onAlbumCoverChange?: (coverMediaId: string) => void;
 }
 
-export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
+export function MediaViewerLayer({
+  viewer,
+  onDeleted,
+  albumId,
+  albumCoverMediaId,
+  onAlbumCoverChange,
+}: MediaViewerLayerProps) {
   const pushedRef = useRef(false);
 
   useEffect(() => {
@@ -56,6 +65,25 @@ export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
     onDeleted?.();
   }
 
+  async function handleSetAlbumCover() {
+    if (!albumId || !viewer.selectedId) return;
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    try {
+      const res = await fetch(`${base}/api/albums/${albumId}/cover`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId: viewer.selectedId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "썸네일 지정 실패");
+      }
+      onAlbumCoverChange?.(viewer.selectedId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   const displayMedia: MediaDetailData | null =
     viewer.media ??
     (viewer.loading
@@ -83,6 +111,11 @@ export function MediaViewerLayer({ viewer, onDeleted }: MediaViewerLayerProps) {
         }
       }}
       onDelete={viewer.media ? handleDelete : undefined}
+      albumId={albumId}
+      albumCoverMediaId={albumCoverMediaId}
+      onSetAlbumCover={
+        albumId && viewer.media ? handleSetAlbumCover : undefined
+      }
       navItems={viewer.items}
       currentIndex={viewer.index}
       onNavigate={viewer.goTo}
