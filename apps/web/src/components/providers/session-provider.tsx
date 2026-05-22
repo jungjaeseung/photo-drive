@@ -1,5 +1,6 @@
 "use client";
 
+import { getAuthApiBasePath } from "@/lib/auth-base-path";
 import { SessionProvider } from "next-auth/react";
 
 export function AuthSessionProvider({
@@ -7,9 +8,8 @@ export function AuthSessionProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   return (
-    <SessionProvider basePath={`${basePath}/api/auth`}>
+    <SessionProvider basePath={getAuthApiBasePath()}>
       {children}
     </SessionProvider>
   );

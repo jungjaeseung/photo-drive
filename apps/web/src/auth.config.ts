@@ -1,8 +1,11 @@
+import { getAuthApiBasePath } from "@/lib/auth-base-path";
+import { getBasePath } from "@/lib/config";
 import type { NextAuthConfig } from "next-auth";
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const basePath = getBasePath();
 
 export const authConfig = {
+  basePath: getAuthApiBasePath(),
   trustHost: true,
   cookies: {
     sessionToken: {

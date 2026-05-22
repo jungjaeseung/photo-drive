@@ -11,16 +11,22 @@ export default auth((req) => {
   if (isPublicPath(path)) return;
 
   if (!req.auth?.user?.id) {
-    const login = req.nextUrl.clone();
-    login.pathname = withBasePath("/login");
-    login.searchParams.set(
+    const loginUrl = new URL(withBasePath("/login"), req.nextUrl.origin);
+    loginUrl.searchParams.set(
       "callbackUrl",
       req.nextUrl.pathname + req.nextUrl.search
     );
-    return NextResponse.redirect(login);
+    return NextResponse.redirect(loginUrl);
   }
 });
 
+/**
+ * matcher는 basePath(/photos) 없이 적은 경로 — Next가 /photos 접두사를 자동 적용.
+ * '/' 를 넣어야 /photos(보관함) 루트도 보호됨.
+ */
 export const config = {
-  matcher: ["/photos/:path*", "/photos"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icons|manifest.webmanifest|sw\\.js).*)",
+    "/",
+  ],
 };
