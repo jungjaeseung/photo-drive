@@ -1,6 +1,7 @@
 "use client";
 
 import type { MediaGridItem } from "@/components/media/media-grid";
+import { fetchMediaByIds } from "@/lib/media-by-id";
 import { dedupeMediaById, sortMediaItems } from "@/lib/media-sort";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -59,22 +60,6 @@ function processingIdsToResolve(
         .map((i) => i.id)
     ),
   ];
-}
-
-async function fetchMediaByIds(ids: string[]): Promise<MediaGridItem[]> {
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const results = await Promise.all(
-    ids.map(async (id) => {
-      try {
-        const res = await fetch(`${base}/api/media/${id}`);
-        if (!res.ok) return null;
-        return (await res.json()) as MediaGridItem;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return results.filter((item): item is MediaGridItem => item != null);
 }
 
 interface UseMediaListOptions {

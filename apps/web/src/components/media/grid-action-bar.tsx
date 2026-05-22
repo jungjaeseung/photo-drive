@@ -1,10 +1,11 @@
 "use client";
 
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
+import { UploadDrawer } from "@/components/media/upload-drawer";
 import { Button } from "@/components/ui/button";
 import type { MediaGridItem } from "@/components/media/media-grid";
 import type { GridMode } from "@/hooks/use-grid-mode";
-import { buildProcessingGridItem } from "@/lib/upload-client";
+import { useUploadQueue } from "@/hooks/use-upload-queue";
 import {
   downloadMediaAsZip,
   formatBytes,
@@ -51,8 +52,17 @@ export function GridActionBar({
   onDeleted,
 }: GridActionBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const {
+    items: uploadItems,
+    enqueue,
+    isActive: uploadActive,
+    drawerOpen,
+    setDrawerOpen,
+    openDrawer,
+    activeCount,
+    totalCount,
+  } = useUploadQueue({ onItemUploaded, onUploaded });
+  const uploadError = uploadItems.find((i) => i.status === "error")?.errorMessage ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -66,36 +76,18 @@ export function GridActionBar({
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const hasSelection = selectedIds.size > 0;
 
-  async function handleFiles(files: FileList | null) {
+  function handleFiles(files: FileList | null) {
     if (!files?.length) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (file.lastModified > 0) {
-          formData.append("fileLastModified", String(file.lastModified));
-        }
-        const res = await fetch(`${base}/api/media/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        if (res.status === 409) continue;
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "upload failed");
-        }
-        const data = await res.json();
-        if (data.mediaId) {
-          onItemUploaded?.(buildProcessingGridItem(file, data.mediaId));
-        }
-      }
-    } catch (e) {
-      setUploadError(String(e));
-    } finally {
-      setUploading(false);
+    enqueue(Array.from(files));
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function handleUploadButtonClick() {
+    if (uploadActive) {
+      openDrawer();
+      return;
     }
+    inputRef.current?.click();
   }
 
   async function handleDownloadZip() {
@@ -220,10 +212,10 @@ export function GridActionBar({
             <Button
               size="icon"
               className="shadow-lg"
-              disabled={uploading}
-              onClick={() => inputRef.current?.click()}
+              onClick={handleUploadButtonClick}
+              title={uploadActive ? "업로드 진행 보기" : "파일 업로드"}
             >
-              {uploading ? (
+              {uploadActive ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <Upload className="h-5 w-5" />
@@ -317,6 +309,14 @@ export function GridActionBar({
           {uploadError ?? removeError ?? downloadError ?? deleteError}
         </p>
       )}
+
+      <UploadDrawer
+        items={uploadItems}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        activeCount={activeCount}
+        totalCount={totalCount}
+      />
 
       <AlbumPickerDialog
         open={pickerOpen}
