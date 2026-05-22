@@ -13,7 +13,6 @@ import exifr from "exifr";
 import sharp from "sharp";
 import { getMediaById, updateMedia } from "./es.js";
 import { getStorageRoot } from "./config.js";
-import { scheduleUploadCompleteNotify } from "./push-notify.js";
 
 export interface ProcessImageOptions {
   /** 기본 true. 일괄 재생성 스크립트에서는 false */
@@ -89,6 +88,7 @@ export async function processImage(
 
     await updateMedia(mediaId, snapshot);
     if (options.notify !== false) {
+      const { scheduleUploadCompleteNotify } = await import("./push-notify.js");
       scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
     }
   } catch (error) {
