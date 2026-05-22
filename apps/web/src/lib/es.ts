@@ -244,6 +244,74 @@ export async function refreshMediaIndex(): Promise<void> {
   await es.indices.refresh({ index: ES_INDEX_MEDIA });
 }
 
+const MEDIA_BULK_CHUNK = 500;
+
+/** 삭제 대상 미디어의 albumIds 수집 (이미 deletedAt 있으면 제외) */
+export async function collectAlbumIdsForMediaIds(
+  mediaIds: string[]
+): Promise<{ deletableIds: string[]; albumIds: Set<string> }> {
+  if (mediaIds.length === 0) {
+    return { deletableIds: [], albumIds: new Set() };
+  }
+  const es = getEsClient();
+  const deletableIds: string[] = [];
+  const albumIds = new Set<string>();
+
+  for (let i = 0; i < mediaIds.length; i += MEDIA_BULK_CHUNK) {
+    const chunk = mediaIds.slice(i, i + MEDIA_BULK_CHUNK);
+    const result = await es.mget({
+      index: ES_INDEX_MEDIA,
+      body: { ids: chunk },
+    });
+
+    for (const doc of result.body.docs ?? []) {
+      if (!doc.found || !doc._source) continue;
+      const src = doc._source as MediaDocument;
+      if (src.deletedAt) continue;
+      deletableIds.push(src.id);
+      for (const albumId of src.albumIds ?? []) {
+        albumIds.add(albumId);
+      }
+    }
+  }
+
+  return { deletableIds, albumIds };
+}
+
+/** 여러 미디어를 deleting 상태로 일괄 표시 */
+export async function markMediaDeletingBulk(
+  mediaIds: string[],
+  deletedAt: string
+): Promise<number> {
+  if (mediaIds.length === 0) return 0;
+  const es = getEsClient();
+  let updated = 0;
+
+  for (let i = 0; i < mediaIds.length; i += MEDIA_BULK_CHUNK) {
+    const chunk = mediaIds.slice(i, i + MEDIA_BULK_CHUNK);
+    const result = await es.updateByQuery({
+      index: ES_INDEX_MEDIA,
+      body: {
+        query: {
+          bool: {
+            must: [{ ids: { values: chunk } }],
+            must_not: [{ exists: { field: "deletedAt" } }],
+          },
+        },
+        script: {
+          source:
+            "ctx._source.status = params.status; ctx._source.deletedAt = params.deletedAt;",
+          lang: "painless",
+          params: { status: "deleting", deletedAt },
+        },
+      },
+    });
+    updated += result.body.updated ?? 0;
+  }
+
+  return updated;
+}
+
 export async function detachAlbumFromAllMedia(
   albumId: string
 ): Promise<number> {

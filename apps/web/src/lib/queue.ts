@@ -26,3 +26,19 @@ export async function enqueueMediaJob(
   const q = getMediaQueue();
   await q.add(name, data, { jobId: `${name}-${data.mediaId}-${Date.now()}` });
 }
+
+export async function enqueueMediaJobsBulk(
+  name: MediaJobName,
+  items: Record<string, unknown>[]
+): Promise<void> {
+  if (items.length === 0) return;
+  const q = getMediaQueue();
+  const ts = Date.now();
+  await q.addBulk(
+    items.map((data, i) => ({
+      name,
+      data,
+      opts: { jobId: `${name}-${data.mediaId}-${ts}-${i}` },
+    }))
+  );
+}

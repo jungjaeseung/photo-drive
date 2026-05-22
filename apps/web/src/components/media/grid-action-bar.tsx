@@ -136,12 +136,14 @@ export function GridActionBar({
     setDeleting(true);
     setDeleteError(null);
     try {
-      for (const id of selectedIds) {
-        const res = await fetch(`${base}/api/media/${id}`, { method: "DELETE" });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "삭제 실패");
-        }
+      const res = await fetch(`${base}/api/media/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaIds: Array.from(selectedIds) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "삭제 실패");
       }
       onDeleted?.();
       onModeChange("detail");
