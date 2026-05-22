@@ -233,6 +233,20 @@ export function GridActionBar({
         {mode === "select" && (
           <div className="flex flex-col items-end gap-2">
             <Button
+              size="icon"
+              variant="destructive"
+              className="shadow-lg"
+              disabled={!hasSelection || deleting}
+              onClick={handleDeleteSelected}
+              title="선택 항목 삭제"
+            >
+              {deleting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Trash2 className="h-5 w-5" />
+              )}
+            </Button>
+            <Button
               size={downloading ? "default" : "icon"}
               className={cn(
                 "shadow-lg",
@@ -288,20 +302,6 @@ export function GridActionBar({
               title="앨범에 추가"
             >
               <Share2 className="h-5 w-5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="destructive"
-              className="shadow-lg"
-              disabled={!hasSelection || deleting}
-              onClick={handleDeleteSelected}
-              title="선택 항목 삭제"
-            >
-              {deleting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Trash2 className="h-5 w-5" />
-              )}
             </Button>
           </div>
         )}
