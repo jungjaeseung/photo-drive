@@ -38,6 +38,35 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* iOS Safari / PWA: 탭 시 하늘색 하이라이트·포커스 링 제거 (터치 기기) */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  summary,
+  [tabindex]:not([tabindex="-1"]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus,
+  button:focus-visible,
+  a:focus,
+  a:focus-visible,
+  [role="button"]:focus,
+  [role="button"]:focus-visible,
+  summary:focus,
+  summary:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
 input,
 textarea,
 [contenteditable="true"] {

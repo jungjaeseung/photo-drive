@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { TouchFocusBlur } from "@/components/touch-focus-blur";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PwaPushSubscribe } from "@/components/pwa/pwa-push-subscribe";
 import { PwaRegister } from "@/components/pwa/pwa-register";
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body className="min-h-dvh select-none antialiased">
         <main className="mx-auto min-h-dvh max-w-5xl">{children}</main>
         <BottomNav />
+        <TouchFocusBlur />
         <PwaRegister />
         <PwaPushSubscribe />
       </body>
