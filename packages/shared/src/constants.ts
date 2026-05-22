@@ -1,6 +1,7 @@
 export const ES_INDEX_MEDIA = "photo-drive-media";
 export const ES_INDEX_ALBUMS = "photo-drive-albums";
 export const ES_INDEX_PUSH_SUBSCRIPTIONS = "photo-drive-push-subscriptions";
+export const ES_INDEX_USERS = "photo-drive-users";
 export const QUEUE_MEDIA = "photo-drive-media";
 
 export const THUMB_MAX_SIZE = 320;

@@ -10,6 +10,39 @@
 - 앨범 (grouping only), 사진만/동영상만 뷰
 - Nginx immutable 캐시 (thumbnail/preview)
 - PWA (홈 화면 추가, 분홍 사진 앱 스타일 아이콘)
+- **로그인** (아이디/비밀번호, NextAuth + ES 사용자)
+
+## 로그인·회원가입
+
+URL을 아는 사람이 사진을 보지 못하도록 **로그인 필수**입니다. 미디어 파일(`/photos/media/...`)도 nginx `auth_request`로 세션 쿠키를 검사합니다.
+
+| 경로 | 설명 |
+|------|------|
+| `/photos/login` | 아이디·비밀번호 로그인 |
+| `/photos/login/new` | 회원가입 (앱 안에는 링크 없음, 주소 직접 입력) |
+
+**환경 변수**
+
+```bash
+openssl rand -base64 32   # AUTH_SECRET 생성
+```
+
+| 변수 | 설명 |
+|------|------|
+| `AUTH_SECRET` | NextAuth JWT 서명 (필수, 커밋 금지) |
+| `AUTH_TRUST_HOST` | `true` (리버스 프록시 뒤) |
+
+**최초 사용자**
+
+1. `pnpm es:init` (users 인덱스 포함)
+2. `/photos/login/new` 에서 가입, 또는:
+
+```bash
+export AUTH_BOOTSTRAP_USERS='[{"id":"user1","password":"비밀번호","name":"이름"}]'
+pnpm --filter @photo-drive/web es:seed-users
+```
+
+**배포 시 nginx** — [`docker/nginx/home-server-snippet.conf`](docker/nginx/home-server-snippet.conf) 의 `auth_request` 블록을 홈서버 nginx에 반영한 뒤 `nginx -s reload` 하세요.
 
 ## PWA (홈 화면에 추가)
 
@@ -63,6 +96,8 @@ export NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
 export VAPID_PUBLIC_KEY="..."
 export VAPID_PRIVATE_KEY="..."
 export VAPID_SUBJECT="mailto:you@example.com"
+export AUTH_SECRET="$(openssl rand -base64 32)"
+export AUTH_TRUST_HOST=true
 docker compose up -d app worker
 ```
 

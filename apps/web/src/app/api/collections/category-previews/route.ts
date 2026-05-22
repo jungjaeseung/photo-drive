@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { searchRandomReadyMedia } from "@/lib/es";
 import { getMediaAssetUrl } from "@/lib/media-url";
 import { NextResponse } from "next/server";
@@ -5,6 +6,9 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const seed = Date.now();
 
   const [photoDoc, videoDoc] = await Promise.all([

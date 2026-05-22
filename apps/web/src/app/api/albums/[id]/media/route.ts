@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import {
   onCoverMediaRemoved,
   refreshAlbumMediaCount,
@@ -32,6 +33,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id: albumId } = await params;
   const album = await getAlbumById(albumId);
   if (!album) {
@@ -64,6 +68,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id: albumId } = await params;
   const album = await getAlbumById(albumId);
   if (!album) {

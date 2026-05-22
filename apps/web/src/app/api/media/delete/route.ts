@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { deleteMediaItems } from "@/lib/media-delete";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,6 +12,9 @@ function parseMediaIds(body: { mediaIds?: unknown }): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const body = await request.json().catch(() => ({}));
   const mediaIds = parseMediaIds(body);
   if (mediaIds.length === 0) {

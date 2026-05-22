@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { NavShell } from "@/components/layout/nav-shell";
 import { TouchFocusBlur } from "@/components/touch-focus-blur";
-import { BottomNav } from "@/components/layout/bottom-nav";
+import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { PwaPushSubscribe } from "@/components/pwa/pwa-push-subscribe";
 import { PwaRegister } from "@/components/pwa/pwa-register";
 import "./globals.css";
@@ -50,11 +51,14 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-dvh select-none antialiased">
-        <main className="mx-auto min-h-dvh max-w-5xl">{children}</main>
-        <BottomNav />
-        <TouchFocusBlur />
-        <PwaRegister />
-        <PwaPushSubscribe />
+        <AuthSessionProvider>
+          <main className="mx-auto min-h-dvh max-w-5xl">
+            <NavShell>{children}</NavShell>
+          </main>
+          <TouchFocusBlur />
+          <PwaRegister />
+          <PwaPushSubscribe />
+        </AuthSessionProvider>
       </body>
     </html>
   );

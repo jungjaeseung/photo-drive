@@ -34,6 +34,14 @@ export interface MediaDocument {
   uploadBatchId?: string;
 }
 
+export interface UserDocument {
+  id: string;
+  passwordHash: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AlbumDocument {
   id: string;
   name: string;

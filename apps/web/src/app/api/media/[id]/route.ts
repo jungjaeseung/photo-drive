@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { deleteMediaItems } from "@/lib/media-delete";
 import { getMediaById } from "@/lib/es";
 import { getMediaAssetUrl } from "@/lib/media-url";
@@ -7,6 +8,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const doc = await getMediaById(id);
   if (!doc) {
@@ -27,6 +31,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const doc = await getMediaById(id);
   if (!doc) {

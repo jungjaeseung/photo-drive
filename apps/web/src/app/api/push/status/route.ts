@@ -1,7 +1,11 @@
+import { requireSession } from "@/lib/require-session";
 import { listPushSubscriptions } from "@/lib/push-subscriptions";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const subs = await listPushSubscriptions();
   return NextResponse.json({
     count: subs.length,

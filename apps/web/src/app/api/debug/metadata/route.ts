@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { previewUploadMetadata } from "@/lib/debug-metadata";
 import { NextResponse } from "next/server";
 
@@ -5,6 +6,9 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");

@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { getAlbumById, listMediaIdsInAlbum } from "@/lib/es";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -5,6 +6,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id: albumId } = await params;
   const album = await getAlbumById(albumId);
   if (!album) {

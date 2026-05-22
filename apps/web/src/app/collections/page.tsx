@@ -2,6 +2,7 @@
 
 import { AlbumGrid, type AlbumGridItem } from "@/components/collections/album-grid";
 import { CategoryGrid } from "@/components/collections/category-grid";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Button } from "@/components/ui/button";
 import { useCategoryPreviewRotation } from "@/hooks/use-category-preview-rotation";
 import { Loader2, Settings } from "lucide-react";
@@ -138,8 +139,9 @@ export default function CollectionsPage() {
 
   return (
     <div className="pb-safe-page">
-      <header className="border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
+      <header className="flex items-center justify-between border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
         <h1 className="text-xl font-bold">모음</h1>
+        <SignOutButton />
       </header>
 
       <section className="py-4">

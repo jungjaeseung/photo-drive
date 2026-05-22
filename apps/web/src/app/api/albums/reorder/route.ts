@@ -1,7 +1,11 @@
+import { requireSession } from "@/lib/require-session";
 import { updateAlbum } from "@/lib/es";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const body = await request.json();
   const albumIds = body.albumIds as string[] | undefined;
 

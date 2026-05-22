@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { findMediaBySha256, indexMedia } from "@/lib/es";
 import { enqueueMediaJob } from "@/lib/queue";
 import { getStorageRoot } from "@/lib/config";
@@ -15,6 +16,9 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");

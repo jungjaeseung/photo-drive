@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import {
   countMediaInAlbum,
   deleteAlbumDoc,
@@ -11,6 +12,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const album = await getAlbumById(id);
   if (!album) {
@@ -24,6 +28,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const album = await getAlbumById(id);
   if (!album) {
@@ -46,6 +53,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const { id } = await params;
   const album = await getAlbumById(id);
   if (!album) {

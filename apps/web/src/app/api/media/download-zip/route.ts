@@ -1,3 +1,4 @@
+import { requireSession } from "@/lib/require-session";
 import { getMediaById } from "@/lib/es";
 import { getStorageRoot } from "@/lib/config";
 import {
@@ -28,6 +29,9 @@ function resolveZipFilename(requested: unknown, fallback: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   try {
     const body = await request.json();
     const mediaIds = body.mediaIds as string[] | undefined;

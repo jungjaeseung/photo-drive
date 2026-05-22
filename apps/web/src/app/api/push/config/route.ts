@@ -1,6 +1,10 @@
+import { requireSession } from "@/lib/require-session";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  const { unauthorized } = await requireSession();
+  if (unauthorized) return unauthorized;
+
   const vapidPublicKey =
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
     process.env.VAPID_PUBLIC_KEY ||
