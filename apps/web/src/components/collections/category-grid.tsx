@@ -7,8 +7,10 @@ import Link from "next/link";
 interface CategoryGridProps {
   photoThumbnailUrl?: string;
   videoThumbnailUrl?: string;
+  favoriteThumbnailUrl?: string;
   photoMediaId?: string;
   videoMediaId?: string;
+  favoriteMediaId?: string;
 }
 
 const categories = [
@@ -24,26 +26,35 @@ const categories = [
     icon: Film,
     thumbKey: "video" as const,
   },
+  {
+    href: "/collections/favorites",
+    label: "즐겨찾기",
+    icon: Heart,
+    thumbKey: "favorite" as const,
+  },
 ];
 
 export function CategoryGrid({
   photoThumbnailUrl,
   videoThumbnailUrl,
+  favoriteThumbnailUrl,
   photoMediaId,
   videoMediaId,
+  favoriteMediaId,
 }: CategoryGridProps) {
   const thumbs = {
     photo: photoThumbnailUrl,
     video: videoThumbnailUrl,
+    favorite: favoriteThumbnailUrl,
   };
   const thumbKeys = {
     photo: photoMediaId,
     video: videoMediaId,
+    favorite: favoriteMediaId,
   };
 
   return (
-    <div className="flex flex-col gap-2 px-2">
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2 px-2">
       {categories.map(({ href, label, icon: Icon, thumbKey }) => {
         const thumb = thumbs[thumbKey];
         return (
@@ -65,16 +76,6 @@ export function CategoryGrid({
           </Link>
         );
       })}
-    </div>
-    <Link
-      href="/collections/favorites"
-      className="group relative flex aspect-[4/1] items-center overflow-hidden rounded-lg bg-zinc-100 px-4 dark:bg-zinc-900"
-    >
-      <Heart className="h-5 w-5 text-red-500" />
-      <span className="ml-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-        즐겨찾기
-      </span>
-    </Link>
     </div>
   );
 }

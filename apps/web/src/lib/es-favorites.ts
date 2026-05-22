@@ -4,7 +4,7 @@ import {
   type FavoriteDocument,
   type MediaDocument,
 } from "@photo-drive/shared";
-import { getEsClient } from "./es";
+import { getEsClient, getMediaById } from "./es";
 
 const FAVORITE_MAPPINGS = {
   properties: {
@@ -222,4 +222,55 @@ export async function searchFavoritedMedia(params: {
       : undefined;
 
   return { items, nextCursor, hasMore };
+}
+
+/** 카테고리 썸네일용 — 즐겨찾기 중 ready 미디어 1건 랜덤 */
+export async function searchRandomFavoritedMedia(
+  userId: string,
+  options?: { excludeMediaId?: string; seed?: number }
+): Promise<MediaDocument | null> {
+  await ensureFavoritesIndex();
+  const es = getEsClient();
+
+  const must: Record<string, unknown>[] = [userIdQuery(userId)];
+  if (options?.excludeMediaId) {
+    must.push({
+      bool: { must_not: [{ term: { mediaId: options.excludeMediaId } }] },
+    });
+  }
+
+  try {
+    const favResult = await es.search({
+      index: ES_INDEX_FAVORITES,
+      body: {
+        size: 1,
+        query: {
+          function_score: {
+            query: { bool: { must } },
+            random_score: {
+              seed: options?.seed ?? Date.now(),
+            },
+          },
+        },
+      },
+    });
+
+    const hit = favResult.body.hits.hits[0];
+    if (!hit?._source) return null;
+
+    const mediaId = (hit._source as FavoriteDocument).mediaId;
+    const doc = await getMediaById(mediaId);
+    if (!doc || doc.deletedAt || doc.status !== "ready") return null;
+    return doc;
+  } catch (err: unknown) {
+    const statusCode =
+      err &&
+      typeof err === "object" &&
+      "statusCode" in err &&
+      typeof (err as { statusCode: number }).statusCode === "number"
+        ? (err as { statusCode: number }).statusCode
+        : 0;
+    if (statusCode === 404) return null;
+    throw err;
+  }
 }
