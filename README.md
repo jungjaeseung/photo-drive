@@ -187,14 +187,26 @@ pnpm --filter @photo-drive/worker regenerate:images              # 전체 실행
 
 ### 동영상 재변환 (처리 실패·썸네일 없음)
 
-짧은 영상 등으로 `processVideo`가 실패한 항목(`status: failed`, 썸네일 없는 `ready`)을 다시 변환합니다. worker 컨테이너를 멈출 필요는 없습니다.
+짧은 영상 등으로 `processVideo`가 실패한 항목(`status: failed`, 썸네일 없는 `ready`)을 다시 변환합니다. **ffmpeg/ffprobe는 worker Docker 이미지에만 있으므로**, 홈서버에서는 아래 **Docker exec** 로 실행하세요 (`spawn ffprobe ENOENT` = 호스트에 ffmpeg 없음).
+
+```bash
+cd ~/source/photo-drive
+# worker 이미지에 CLI·ffmpeg 수정이 반영된 뒤 (최초 1회)
+docker compose build worker && docker compose up -d worker
+
+pnpm regenerate:videos -- --dry-run
+pnpm regenerate:videos
+# 테스트: pnpm regenerate:videos -- --limit 5
+```
+
+컨테이너 안 경로는 `STORAGE_ROOT=/storage`, `ELASTICSEARCH_URL=http://js-es:9200` (compose 기본값)입니다.
+
+호스트에 `ffmpeg` 패키지를 설치한 경우에만:
 
 ```bash
 export STORAGE_ROOT=/mnt/extra/photo-drive
 export ELASTICSEARCH_URL=http://127.0.0.1:9200
-pnpm --filter @photo-drive/worker regenerate:videos -- --dry-run
 pnpm --filter @photo-drive/worker regenerate:videos
-# 테스트: pnpm --filter @photo-drive/worker regenerate:videos -- --limit 5
 ```
 
 배포 후 worker 이미지를 다시 빌드해야 신규 업로드에도 수정된 ffmpeg 로직이 적용됩니다.
