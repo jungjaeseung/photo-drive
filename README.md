@@ -78,8 +78,12 @@ docker compose up -d app worker
 
 브라우저에서 확인: `https://…/photos/api/push/config` → `{"enabled":true,"vapidPublicKey":"…"}` 이어야 함.
 
-**PWA에서 주소 확인 (iPhone)**  
-홈 화면 앱에는 주소창이 없습니다. 앱 **오른쪽 위 분홍 종 버튼** → 「현재 주소」「경로」에 `/photos` 가 포함되는지 확인하세요.
+**PWA 알림 배너**  
+최초 실행 시 또는 알림이 꺼져 있을 때만 하단에 「알림 받기」 배너가 표시됩니다. 「나중에」를 누르면 다시 뜨지 않습니다.
+
+**PC에서 업로드해도 iPhone에 알림이 가려면** iPhone 홈 화면 앱에서 「알림 받기」까지 완료해 두어야 합니다 (PC와 별도로 구독 등록).  
+구독 확인: `https://…/photos/api/push/status` → `count`가 1 이상이어야 함.  
+worker 로그: `docker logs photo-drive-worker --tail 20` 에 `[push] 업로드 완료 알림: … 성공 1` 확인.
 
 ## 로컬 개발
 

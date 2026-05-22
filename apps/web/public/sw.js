@@ -18,6 +18,12 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+function toAbsoluteUrl(path) {
+  if (!path) return self.location.origin + "/";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return new URL(path, self.location.origin).href;
+}
+
 self.addEventListener("push", (event) => {
   let data = { title: "Photo Drive", body: "", url: "/", icon: "" };
   try {
@@ -26,12 +32,15 @@ self.addEventListener("push", (event) => {
     /* ignore */
   }
 
+  const targetUrl = toAbsoluteUrl(data.url);
+  const iconUrl = data.icon ? toAbsoluteUrl(data.icon) : undefined;
+
   event.waitUntil(
     self.registration.showNotification(data.title || "Photo Drive", {
       body: data.body || "",
-      icon: data.icon || undefined,
-      badge: data.icon || undefined,
-      data: { url: data.url || "/" },
+      icon: iconUrl,
+      badge: iconUrl,
+      data: { url: targetUrl },
       tag: "photo-drive-upload",
       renotify: true,
     })
@@ -40,8 +49,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const path = event.notification.data?.url || "/";
-  const targetUrl = new URL(path, self.location.origin).href;
+  const targetUrl = toAbsoluteUrl(event.notification.data?.url || "/");
 
   event.waitUntil(
     self.clients

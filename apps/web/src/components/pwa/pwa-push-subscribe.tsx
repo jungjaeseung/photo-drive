@@ -6,102 +6,64 @@ import {
   ensurePushSubscription,
   getPushSetupState,
   isIOS,
-  isStandalonePwa,
-  openPushPrompt,
-  PUSH_PROMPT_OPEN_EVENT,
-  SW_READY_EVENT,
   subscribeToPushNotifications,
+  SW_READY_EVENT,
 } from "@/lib/push-client";
 import { Bell, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const DISMISS_KEY = "photo-drive-push-prompt-dismissed";
 
-type PromptReason =
-  | "enable"
-  | "ios_home_screen"
-  | "denied"
-  | "reconnect"
-  | "unsupported"
-  | null;
+type PromptReason = "enable" | "denied" | null;
 
 function stateToReason(
-  state: Awaited<ReturnType<typeof getPushSetupState>>,
-  bypassDismiss: boolean
+  state: Awaited<ReturnType<typeof getPushSetupState>>
 ): PromptReason {
-  switch (state) {
-    case "need_enable":
-      if (!bypassDismiss && localStorage.getItem(DISMISS_KEY) === "1") {
-        return null;
-      }
-      return "enable";
-    case "need_reconnect":
-      return "reconnect";
-    case "ios_browser":
-      return "ios_home_screen";
-    case "denied":
-      return "denied";
-    case "unsupported":
-      return isIOS() && !isStandalonePwa() ? "ios_home_screen" : "unsupported";
-    default:
-      return null;
+  if (state === "need_enable") {
+    if (localStorage.getItem(DISMISS_KEY) === "1") return null;
+    return "enable";
   }
+  if (state === "denied") return "denied";
+  return null;
 }
 
 export function PwaPushSubscribe() {
   const [reason, setReason] = useState<PromptReason>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
-  const [forceOpen, setForceOpen] = useState(false);
 
-  const evaluate = useCallback(
-    async (opts?: { bypassDismiss?: boolean }) => {
-      const bypass = opts?.bypassDismiss ?? forceOpen;
-      const config = await fetchPushConfig();
-      setServerEnabled(config.enabled);
+  const evaluate = useCallback(async () => {
+    const config = await fetchPushConfig();
+    if (!config.enabled) {
+      setReason(null);
+      return;
+    }
 
-      const state = await getPushSetupState();
-      if (state === "ready") {
-        await ensurePushSubscription();
-        setReason(null);
-        return;
-      }
+    const state = await getPushSetupState();
+    if (state === "ready") {
+      await ensurePushSubscription();
+      setReason(null);
+      return;
+    }
 
-      setReason(stateToReason(state, bypass));
-    },
-    [forceOpen]
-  );
+    setReason(stateToReason(state));
+  }, []);
 
   useEffect(() => {
     void evaluate();
-    const t = setTimeout(() => void evaluate(), 1500);
-    const t2 = setTimeout(() => void evaluate(), 5000);
-    return () => {
-      clearTimeout(t);
-      clearTimeout(t2);
-    };
+    const t = setTimeout(() => void evaluate(), 2000);
+    return () => clearTimeout(t);
   }, [evaluate]);
 
   useEffect(() => {
-    const onOpen = () => {
-      localStorage.removeItem(DISMISS_KEY);
-      setForceOpen(true);
-      void evaluate({ bypassDismiss: true });
-    };
     const onSwReady = () => void evaluate();
-    window.addEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
-    window.addEventListener(SW_READY_EVENT, onSwReady);
-    return () => {
-      window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
-      window.removeEventListener(SW_READY_EVENT, onSwReady);
-    };
-  }, [evaluate]);
-
-  useEffect(() => {
     const onFocus = () => void evaluate();
+    window.addEventListener(SW_READY_EVENT, onSwReady);
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener(SW_READY_EVENT, onSwReady);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [evaluate]);
 
   async function handleEnable() {
@@ -111,34 +73,17 @@ export function PwaPushSubscribe() {
       const ok = await subscribeToPushNotifications();
       if (ok) {
         localStorage.removeItem(DISMISS_KEY);
-        setForceOpen(false);
         setReason(null);
       } else {
-        setError("알림 권한이 필요합니다.");
-        void evaluate({ bypassDismiss: true });
+        setError(
+          "알림 등록에 실패했습니다. 홈 화면 앱에서 다시 시도하거나 설정 → 알림을 확인해 주세요."
+        );
       }
     } catch (e) {
       setError(String(e));
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function handleReconnect() {
-    setBusy(true);
-    setError(null);
-    try {
-      const ok = await ensurePushSubscription();
-      if (ok) {
-        setForceOpen(false);
-        setReason(null);
-      } else {
-        setError("구독에 실패했습니다. 알림 받기를 다시 시도해 주세요.");
-      }
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
+      void evaluate();
     }
   }
 
@@ -146,14 +91,10 @@ export function PwaPushSubscribe() {
     if (reason === "enable") {
       localStorage.setItem(DISMISS_KEY, "1");
     }
-    setForceOpen(false);
     setReason(null);
   }
 
   if (reason === null) return null;
-
-  const iosHint =
-    "iPhone/iPad는 Safari 탭이 아니라 홈 화면에 추가한 앱에서만 푸시가 됩니다. 홈 화면 아이콘으로 열었는지 확인해 주세요.";
 
   return (
     <div
@@ -173,29 +114,9 @@ export function PwaPushSubscribe() {
               </p>
             </>
           )}
-          {reason === "reconnect" && (
-            <>
-              <p className="text-sm font-medium">알림 연결 필요</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                알림은 허용되어 있지만 기기 등록이 없습니다. 한 번 연결해 주세요.
-              </p>
-            </>
-          )}
-          {reason === "ios_home_screen" && (
-            <>
-              <p className="text-sm font-medium">홈 화면 앱에서 열기</p>
-              <p className="mt-1 text-xs text-zinc-500">{iosHint}</p>
-              {!isStandalonePwa() && (
-                <p className="mt-2 text-xs text-amber-600">
-                  지금은 Safari/브라우저 탭으로 보고 있는 것 같습니다. 홈 화면
-                  아이콘을 눌러 다시 열어 주세요.
-                </p>
-              )}
-            </>
-          )}
           {reason === "denied" && (
             <>
-              <p className="text-sm font-medium">알림이 차단됨</p>
+              <p className="text-sm font-medium">알림이 꺼져 있음</p>
               <p className="mt-1 text-xs text-zinc-500">
                 {isIOS()
                   ? "설정 → 알림 → Photo Drive에서 알림을 켜 주세요."
@@ -203,47 +124,21 @@ export function PwaPushSubscribe() {
               </p>
             </>
           )}
-          {reason === "unsupported" && (
-            <>
-              <p className="text-sm font-medium">푸시를 사용할 수 없음</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                이 브라우저/버전에서는 Web Push가 지원되지 않습니다. iOS 16.4
-                이상에서 홈 화면에 추가한 뒤 다시 시도해 주세요.
-              </p>
-            </>
-          )}
-          {serverEnabled === false && (
-            <p className="mt-2 text-xs text-amber-600">
-              서버에 VAPID 키가 설정되지 않았습니다.
-            </p>
-          )}
           {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
-            {(reason === "enable" || reason === "reconnect") && (
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  void (reason === "reconnect" ? handleReconnect() : handleEnable())
-                }
-              >
-                {busy ? "설정 중…" : reason === "reconnect" ? "연결" : "알림 받기"}
-              </Button>
-            )}
             {reason === "enable" && (
-              <Button size="sm" variant="ghost" onClick={handleDismiss}>
-                나중에
-              </Button>
+              <>
+                <Button size="sm" disabled={busy} onClick={() => void handleEnable()}>
+                  {busy ? "설정 중…" : "알림 받기"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handleDismiss}>
+                  나중에
+                </Button>
+              </>
             )}
-            {(reason === "denied" ||
-              reason === "ios_home_screen" ||
-              reason === "unsupported") && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void evaluate({ bypassDismiss: true })}
-              >
-                다시 확인
+            {reason === "denied" && (
+              <Button size="sm" variant="ghost" onClick={handleDismiss}>
+                닫기
               </Button>
             )}
           </div>
@@ -259,69 +154,4 @@ export function PwaPushSubscribe() {
       </div>
     </div>
   );
-}
-
-/** 헤더·전역 — 서버 푸시 설정이 켜져 있으면 항상 표시 (완료 상태만 숨김) */
-export function PushNotifyButton({
-  className,
-  fixed = false,
-}: {
-  className?: string;
-  fixed?: boolean;
-}) {
-  const [visible, setVisible] = useState(false);
-
-  const refresh = useCallback(() => {
-    void (async () => {
-      const config = await fetchPushConfig();
-      if (!config.enabled) {
-        setVisible(false);
-        return;
-      }
-      const state = await getPushSetupState();
-      setVisible(state !== "ready");
-    })();
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const t1 = setTimeout(refresh, 1500);
-    const t2 = setTimeout(refresh, 5000);
-    window.addEventListener(SW_READY_EVENT, refresh);
-    window.addEventListener("focus", refresh);
-    window.addEventListener(PUSH_PROMPT_OPEN_EVENT, refresh);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener(SW_READY_EVENT, refresh);
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, refresh);
-    };
-  }, [refresh]);
-
-  if (!visible) return null;
-
-  const btn = (
-    <button
-      type="button"
-      aria-label="업로드 알림 설정"
-      className={className}
-      onClick={() => openPushPrompt()}
-    >
-      <Bell className="h-5 w-5 text-pink-500" />
-    </button>
-  );
-
-  if (fixed) {
-    return (
-      <div
-        className="fixed right-4 z-[60]"
-        style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
-      >
-        {btn}
-      </div>
-    );
-  }
-
-  return btn;
 }
