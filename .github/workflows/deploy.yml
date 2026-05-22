@@ -15,6 +15,16 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_URL: ${{ secrets.AUTH_URL }}
+          REGISTRATION_BASIC_AUTH_USER: ${{ secrets.REGISTRATION_BASIC_AUTH_USER }}
+          REGISTRATION_BASIC_AUTH_PASSWORD: ${{ secrets.REGISTRATION_BASIC_AUTH_PASSWORD }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -22,16 +32,6 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: true
           command_timeout: 30m
-          env:
-            AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-            AUTH_URL: ${{ secrets.AUTH_URL }}
-            REGISTRATION_BASIC_AUTH_USER: ${{ secrets.REGISTRATION_BASIC_AUTH_USER }}
-            REGISTRATION_BASIC_AUTH_PASSWORD: ${{ secrets.REGISTRATION_BASIC_AUTH_PASSWORD }}
-            NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-            VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-            VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-            VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-            PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
           envs: >-
             AUTH_SECRET,
             AUTH_URL,
