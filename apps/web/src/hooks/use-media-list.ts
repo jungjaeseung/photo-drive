@@ -97,10 +97,27 @@ export function useMediaList(options: UseMediaListOptions = {}) {
         params.set("size", "60");
 
         const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-        const res = await fetch(`${base}/api/media?${params}`);
-        const data = await res.json();
+        const res = await fetch(`${base}/api/media?${params}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data = (await res.json()) as {
+          items?: MediaGridItem[];
+          nextCursor?: string;
+          hasMore?: boolean;
+          error?: string;
+        };
 
         if (seq !== fetchSeqRef.current) return;
+
+        if (!res.ok) {
+          console.error("media list fetch failed", res.status, data.error);
+          if (!append && !fetchOptions?.silent) {
+            setItems([]);
+            setHasMore(false);
+          }
+          return;
+        }
 
         const apiItems = (data.items ?? []) as MediaGridItem[];
         const prev = itemsRef.current;

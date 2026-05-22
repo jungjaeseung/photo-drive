@@ -16,14 +16,23 @@ export async function GET(request: NextRequest) {
   const size = parseInt(searchParams.get("size") ?? "50", 10);
   const favoritesOnly = searchParams.get("favoritesOnly") === "1";
 
-  const result = favoritesOnly
-    ? await searchFavoritedMedia({
-        userId: session.user.id,
-        type,
-        cursor,
-        size,
-      })
-    : await searchMedia({ type, albumId, cursor, size });
+  let result: Awaited<ReturnType<typeof searchMedia>>;
+  try {
+    result = favoritesOnly
+      ? await searchFavoritedMedia({
+          userId: session.user.id,
+          type,
+          cursor,
+          size,
+        })
+      : await searchMedia({ type, albumId, cursor, size });
+  } catch (error) {
+    console.error("media list error", error);
+    return NextResponse.json(
+      { error: "failed to load media" },
+      { status: 500 }
+    );
+  }
 
   const favoritedSet = favoritesOnly
     ? new Set(result.items.map((d) => d.id))

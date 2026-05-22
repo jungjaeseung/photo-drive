@@ -33,9 +33,10 @@ export const authConfig = {
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id;
-        session.user.name = (token.name as string) ?? token.id;
+      if (session.user) {
+        const id = (token.id as string | undefined) ?? token.sub ?? "";
+        session.user.id = id;
+        session.user.name = (token.name as string | undefined) ?? id;
       }
       return session;
     },
