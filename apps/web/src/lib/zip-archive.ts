@@ -14,6 +14,22 @@ export function sumZipEntryBytes(entries: ZipEntry[]): number {
   return entries.reduce((sum, e) => sum + e.size, 0);
 }
 
+/** ZIP 안에서 파일명이 겹치면 `이름 (2).ext` 형식으로 구분 */
+export function uniqueZipEntryName(filename: string, used: Set<string>): string {
+  const ext = path.extname(filename);
+  const stem = ext ? filename.slice(0, -ext.length) : filename;
+  let candidate = filename;
+  let n = 2;
+
+  while (used.has(candidate)) {
+    candidate = `${stem} (${n})${ext}`;
+    n += 1;
+  }
+
+  used.add(candidate);
+  return candidate;
+}
+
 export async function buildZipStream(
   entries: Pick<ZipEntry, "zipName" | "fullPath">[]
 ): Promise<PassThrough> {
@@ -42,17 +58,22 @@ export async function collectZipEntries(
   } | null>
 ): Promise<ZipEntry[]> {
   const entries: ZipEntry[] = [];
+  const usedNames = new Set<string>();
 
-  for (const id of mediaIds) {
-    const doc = await getMedia(id);
+  for (const mediaId of mediaIds) {
+    const doc = await getMedia(mediaId);
     if (!doc?.originalPath || doc.status !== "ready") continue;
 
     const fullPath = path.join(storageRoot, doc.originalPath);
     try {
       await access(fullPath);
       const { size } = await stat(fullPath);
+      const zipName = uniqueZipEntryName(
+        path.basename(doc.filename),
+        usedNames
+      );
       entries.push({
-        zipName: `${id.slice(0, 8)}_${doc.filename}`,
+        zipName,
         fullPath,
         size,
       });
