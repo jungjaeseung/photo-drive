@@ -60,6 +60,24 @@ export function useGridMode() {
     });
   }, []);
 
+  const selectMany = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+  }, []);
+
+  const deselectMany = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, []);
+
   return {
     mode,
     setMode,
@@ -67,6 +85,8 @@ export function useGridMode() {
     toggleSelect,
     toggleGroup,
     selectOne,
+    selectMany,
+    deselectMany,
     clearSelection,
     enterSelectMode,
     selectedCount: selectedIds.size,

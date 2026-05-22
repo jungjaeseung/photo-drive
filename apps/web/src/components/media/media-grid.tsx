@@ -8,6 +8,7 @@ import {
   getSortIso,
   sortMediaItems,
 } from "@/lib/media-sort";
+import { useGridDragSelect } from "@/hooks/use-grid-drag-select";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MediaGridCell } from "./media-grid-cell";
 import { SelectionCheck } from "./selection-check";
@@ -32,6 +33,8 @@ interface MediaGridProps {
   selectedIds?: Set<string>;
   onSelect?: (item: MediaGridItem) => void;
   onToggleSelect?: (id: string) => void;
+  onSelectMany?: (ids: string[]) => void;
+  onDeselectMany?: (ids: string[]) => void;
   onToggleGroup?: (ids: string[]) => void;
   onLongPress?: (item: MediaGridItem) => void;
   hasMore?: boolean;
@@ -64,6 +67,8 @@ export function MediaGrid({
   selectedIds,
   onSelect,
   onToggleSelect,
+  onSelectMany,
+  onDeselectMany,
   onToggleGroup,
   onLongPress,
   hasMore = false,
@@ -74,6 +79,13 @@ export function MediaGrid({
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const sections = useMemo(() => groupByDate(items), [items]);
+
+  const { suppressClickRef, dragPointerHandlers } = useGridDragSelect({
+    enabled: mode === "select" && !!onSelectMany && !!onDeselectMany,
+    selectedIds,
+    onSelectMany: onSelectMany ?? (() => {}),
+    onDeselectMany: onDeselectMany ?? (() => {}),
+  });
 
   useEffect(() => {
     const el = parentRef.current;
@@ -180,7 +192,12 @@ export function MediaGrid({
   }, [onLoadMore, hasMore, totalSize, items.length]);
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto pb-safe-grid">
+    <div
+      ref={parentRef}
+      className="h-full overflow-auto pb-safe-grid"
+      style={mode === "select" ? { touchAction: "pan-y" } : undefined}
+      {...dragPointerHandlers}
+    >
       <div
         style={{ height: totalSize, position: "relative" }}
       >
@@ -236,6 +253,7 @@ export function MediaGrid({
                       mode={mode}
                       selected={selectedIds?.has(item.id) ?? false}
                       orderedItems={orderedItems}
+                      suppressClickRef={suppressClickRef}
                       onSelect={onSelect}
                       onToggleSelect={onToggleSelect}
                       onLongPress={onLongPress}

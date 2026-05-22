@@ -16,6 +16,7 @@ interface MediaGridCellProps {
   mode: GridMode;
   selected: boolean;
   orderedItems: MediaGridItem[];
+  suppressClickRef?: React.RefObject<boolean>;
   onSelect?: (item: MediaGridItem) => void;
   onToggleSelect?: (id: string) => void;
   onLongPress?: (item: MediaGridItem) => void;
@@ -26,6 +27,7 @@ export function MediaGridCell({
   mode,
   selected,
   orderedItems,
+  suppressClickRef,
   onSelect,
   onToggleSelect,
   onLongPress,
@@ -42,6 +44,7 @@ export function MediaGridCell({
   }
 
   function handlePointerDown(e: React.PointerEvent) {
+    if (mode === "select") return;
     longPressFiredRef.current = false;
     startRef.current = { x: e.clientX, y: e.clientY };
     clearTimer();
@@ -64,6 +67,7 @@ export function MediaGridCell({
   }
 
   function handleClick() {
+    if (suppressClickRef?.current) return;
     if (longPressFiredRef.current) {
       longPressFiredRef.current = false;
       return;
@@ -87,6 +91,7 @@ export function MediaGridCell({
   return (
     <button
       type="button"
+      data-media-id={item.id}
       className={cn(
         "relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900",
         selected && "ring-2 ring-inset ring-blue-500"

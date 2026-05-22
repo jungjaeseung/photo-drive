@@ -9,7 +9,7 @@ import {
 import { addMediaToAlbums } from "@/lib/album-media";
 import { cn } from "@/lib/utils";
 import { FolderOpen, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AlbumItem {
   id: string;
@@ -37,6 +37,8 @@ export function AlbumPickerDialog({
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [nameInputActive, setNameInputActive] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -55,9 +57,15 @@ export function AlbumPickerDialog({
     if (open) {
       setError(null);
       setProgress(null);
+      setNameInputActive(false);
       loadAlbums();
     }
   }, [open, loadAlbums]);
+
+  function activateNameInput() {
+    setNameInputActive(true);
+    requestAnimationFrame(() => nameInputRef.current?.focus());
+  }
 
   async function addToAlbum(albumId: string, albumName: string) {
     if (!mediaIds.length) return;
@@ -114,7 +122,10 @@ export function AlbumPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="!inset-auto !left-1/2 !top-1/2 !h-auto !max-h-[80vh] !w-[min(100%,24rem)] !-translate-x-1/2 !-translate-y-1/2 !flex-none rounded-xl bg-zinc-900 p-0 text-white shadow-xl">
+      <DialogContent
+        className="!inset-auto !left-1/2 !top-1/2 !h-auto !max-h-[80vh] !w-[min(100%,24rem)] !-translate-x-1/2 !-translate-y-1/2 !flex-none rounded-xl bg-zinc-900 p-0 text-white shadow-xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="relative flex flex-col">
           {busy && (
             <div
@@ -196,11 +207,24 @@ export function AlbumPickerDialog({
             <p className="mb-2 text-xs text-zinc-400">새 앨범 만들기</p>
             <div className="flex gap-2">
               <input
+                ref={nameInputRef}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="앨범 이름"
                 disabled={busy}
+                readOnly={!nameInputActive}
+                inputMode="text"
+                enterKeyHint="done"
                 className="flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-50"
+                onPointerDown={(e) => {
+                  if (!nameInputActive) {
+                    e.preventDefault();
+                    activateNameInput();
+                  }
+                }}
+                onFocus={(e) => {
+                  if (!nameInputActive) e.target.blur();
+                }}
                 onKeyDown={(e) =>
                   e.key === "Enter" && !busy && handleCreateAlbum()
                 }

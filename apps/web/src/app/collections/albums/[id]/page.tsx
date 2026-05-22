@@ -56,6 +56,8 @@ export default function AlbumDetailPage() {
           selectedIds={gridMode.selectedIds}
           onSelect={(item) => viewer.select(item.id)}
           onToggleSelect={gridMode.toggleSelect}
+          onSelectMany={gridMode.selectMany}
+          onDeselectMany={gridMode.deselectMany}
           onToggleGroup={gridMode.toggleGroup}
           onLongPress={handleLongPress}
           hasMore={hasMore}
