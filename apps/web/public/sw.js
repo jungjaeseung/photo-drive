@@ -25,7 +25,7 @@ function toAbsoluteUrl(path) {
 }
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Photo Drive", body: "", url: "/", icon: "" };
+  let data = { title: "업로드 완료", body: "", url: "/", icon: "" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {
@@ -36,7 +36,7 @@ self.addEventListener("push", (event) => {
   const iconUrl = data.icon ? toAbsoluteUrl(data.icon) : undefined;
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "Photo Drive", {
+    self.registration.showNotification(data.title || "업로드 완료", {
       body: data.body || "",
       icon: iconUrl,
       badge: iconUrl,

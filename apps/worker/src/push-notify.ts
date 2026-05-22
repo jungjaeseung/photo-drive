@@ -36,8 +36,8 @@ function notificationPayload(count: number): string {
   const origin = appOrigin();
   const prefix = origin || "";
   return JSON.stringify({
-    title: "Photo Drive",
-    body: `${count}개의 파일이 업로드 되었습니다`,
+    title: "업로드 완료",
+    body: `${count}개의 파일이 업로드 되었습니다.`,
     url: `${prefix}${root}/`,
     icon: `${prefix}${root}/icons/icon-192.png`,
   });
