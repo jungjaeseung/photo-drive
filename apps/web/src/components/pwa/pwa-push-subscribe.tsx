@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { fetchPushConfig } from "@/lib/push-config";
 import {
   ensurePushSubscription,
-  hasActivePushSubscription,
+  getPushSetupState,
   isIOS,
-  isPushContextOk,
-  isPushSupported,
   isStandalonePwa,
+  openPushPrompt,
+  PUSH_PROMPT_OPEN_EVENT,
   subscribeToPushNotifications,
 } from "@/lib/push-client";
 import { Bell, X } from "lucide-react";
@@ -21,68 +21,69 @@ type PromptReason =
   | "ios_home_screen"
   | "denied"
   | "reconnect"
+  | "unsupported"
   | null;
+
+function stateToReason(
+  state: Awaited<ReturnType<typeof getPushSetupState>>,
+  bypassDismiss: boolean
+): PromptReason {
+  switch (state) {
+    case "need_enable":
+      if (!bypassDismiss && localStorage.getItem(DISMISS_KEY) === "1") {
+        return null;
+      }
+      return "enable";
+    case "need_reconnect":
+      return "reconnect";
+    case "ios_browser":
+      return "ios_home_screen";
+    case "denied":
+      return "denied";
+    case "unsupported":
+      return isIOS() && !isStandalonePwa() ? "ios_home_screen" : "unsupported";
+    default:
+      return null;
+  }
+}
 
 export function PwaPushSubscribe() {
   const [reason, setReason] = useState<PromptReason>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
+  const [forceOpen, setForceOpen] = useState(false);
 
-  const evaluate = useCallback(async () => {
-    if (!isPushSupported()) {
-      setReason(null);
-      return;
-    }
+  const evaluate = useCallback(
+    async (opts?: { bypassDismiss?: boolean }) => {
+      const bypass = opts?.bypassDismiss ?? forceOpen;
+      const config = await fetchPushConfig();
+      setServerEnabled(config.enabled);
 
-    const config = await fetchPushConfig();
-    setServerEnabled(config.enabled);
-    if (!config.enabled) {
-      setReason(null);
-      return;
-    }
-
-    try {
-      await navigator.serviceWorker.ready;
-    } catch {
-      setReason(null);
-      return;
-    }
-
-    if (!isPushContextOk()) {
-      if (isIOS()) setReason("ios_home_screen");
-      else setReason(null);
-      return;
-    }
-
-    const permission = Notification.permission;
-
-    if (permission === "denied") {
-      setReason("denied");
-      return;
-    }
-
-    if (permission === "granted") {
-      const subscribed = await hasActivePushSubscription();
-      if (subscribed) {
+      const state = await getPushSetupState();
+      if (state === "ready") {
         await ensurePushSubscription();
         setReason(null);
         return;
       }
-      setReason("reconnect");
-      return;
-    }
 
-    if (localStorage.getItem(DISMISS_KEY) === "1") {
-      setReason(null);
-      return;
-    }
-
-    setReason("enable");
-  }, []);
+      setReason(stateToReason(state, bypass));
+    },
+    [forceOpen]
+  );
 
   useEffect(() => {
     void evaluate();
+  }, [evaluate]);
+
+  useEffect(() => {
+    const onOpen = () => {
+      localStorage.removeItem(DISMISS_KEY);
+      setForceOpen(true);
+      void evaluate({ bypassDismiss: true });
+    };
+    window.addEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(PUSH_PROMPT_OPEN_EVENT, onOpen);
   }, [evaluate]);
 
   useEffect(() => {
@@ -98,17 +99,16 @@ export function PwaPushSubscribe() {
       const ok = await subscribeToPushNotifications();
       if (ok) {
         localStorage.removeItem(DISMISS_KEY);
+        setForceOpen(false);
         setReason(null);
-      } else if (!isPushContextOk() && isIOS()) {
-        setReason("ios_home_screen");
       } else {
         setError("알림 권한이 필요합니다.");
+        void evaluate({ bypassDismiss: true });
       }
     } catch (e) {
       setError(String(e));
     } finally {
       setBusy(false);
-      void evaluate();
     }
   }
 
@@ -117,8 +117,12 @@ export function PwaPushSubscribe() {
     setError(null);
     try {
       const ok = await ensurePushSubscription();
-      if (ok) setReason(null);
-      else setError("구독에 실패했습니다. 알림 받기를 다시 시도해 주세요.");
+      if (ok) {
+        setForceOpen(false);
+        setReason(null);
+      } else {
+        setError("구독에 실패했습니다. 알림 받기를 다시 시도해 주세요.");
+      }
     } catch (e) {
       setError(String(e));
     } finally {
@@ -130,6 +134,7 @@ export function PwaPushSubscribe() {
     if (reason === "enable") {
       localStorage.setItem(DISMISS_KEY, "1");
     }
+    setForceOpen(false);
     setReason(null);
   }
 
@@ -140,7 +145,7 @@ export function PwaPushSubscribe() {
 
   return (
     <div
-      className="fixed left-4 right-4 z-40 rounded-xl border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+      className="fixed left-4 right-4 z-[60] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
       style={{ bottom: "calc(var(--fab-bottom, 5rem) + 4.5rem)" }}
       role="region"
       aria-label="업로드 완료 알림"
@@ -171,7 +176,7 @@ export function PwaPushSubscribe() {
               {!isStandalonePwa() && (
                 <p className="mt-2 text-xs text-amber-600">
                   지금은 Safari/브라우저 탭으로 보고 있는 것 같습니다. 홈 화면
-                  아이콘을 눌러 다시 열어 주세요. (다시 추가할 필요는 없습니다)
+                  아이콘을 눌러 다시 열어 주세요.
                 </p>
               )}
             </>
@@ -181,14 +186,23 @@ export function PwaPushSubscribe() {
               <p className="text-sm font-medium">알림이 차단됨</p>
               <p className="mt-1 text-xs text-zinc-500">
                 {isIOS()
-                  ? "설정 → 알림 → Photo Drive(또는 Safari)에서 알림을 켜 주세요."
+                  ? "설정 → 알림 → Photo Drive에서 알림을 켜 주세요."
                   : "브라우저 사이트 설정에서 알림을 허용해 주세요."}
+              </p>
+            </>
+          )}
+          {reason === "unsupported" && (
+            <>
+              <p className="text-sm font-medium">푸시를 사용할 수 없음</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                이 브라우저/버전에서는 Web Push가 지원되지 않습니다. iOS 16.4
+                이상에서 홈 화면에 추가한 뒤 다시 시도해 주세요.
               </p>
             </>
           )}
           {serverEnabled === false && (
             <p className="mt-2 text-xs text-amber-600">
-              서버에 VAPID 키가 설정되지 않았습니다. 배포 환경 변수를 확인하세요.
+              서버에 VAPID 키가 설정되지 않았습니다.
             </p>
           )}
           {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
@@ -209,8 +223,14 @@ export function PwaPushSubscribe() {
                 나중에
               </Button>
             )}
-            {(reason === "denied" || reason === "ios_home_screen") && (
-              <Button size="sm" variant="ghost" onClick={() => void evaluate()}>
+            {(reason === "denied" ||
+              reason === "ios_home_screen" ||
+              reason === "unsupported") && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void evaluate({ bypassDismiss: true })}
+              >
                 다시 확인
               </Button>
             )}
@@ -226,5 +246,29 @@ export function PwaPushSubscribe() {
         </button>
       </div>
     </div>
+  );
+}
+
+/** 헤더 등에서 수동으로 알림 설정 열기 */
+export function PushNotifyButton({ className }: { className?: string }) {
+  const [hidden, setHidden] = useState(true);
+
+  useEffect(() => {
+    void getPushSetupState().then((s) => {
+      setHidden(s === "ready" || s === "server_off" || s === "unsupported");
+    });
+  }, []);
+
+  if (hidden) return null;
+
+  return (
+    <button
+      type="button"
+      aria-label="업로드 알림 설정"
+      className={className}
+      onClick={() => openPushPrompt()}
+    >
+      <Bell className="h-5 w-5 text-pink-500" />
+    </button>
   );
 }

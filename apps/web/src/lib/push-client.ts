@@ -12,13 +12,24 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
+/** 동기 1차 검사 (iOS는 PushManager가 window에 없음) */
 export function isPushSupported(): boolean {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
-    "PushManager" in window &&
     "Notification" in window
   );
+}
+
+/** SW의 pushManager 존재 여부 (iOS PWA 필수) */
+export async function hasPushManager(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return "pushManager" in reg;
+  } catch {
+    return false;
+  }
 }
 
 export function isIOS(): boolean {
@@ -52,7 +63,7 @@ async function getVapidPublicKey(): Promise<string | null> {
 
 export async function subscribeToPushNotifications(): Promise<boolean> {
   const vapidPublicKey = await getVapidPublicKey();
-  if (!vapidPublicKey || !isPushSupported()) return false;
+  if (!vapidPublicKey || !(await hasPushManager())) return false;
   if (!isPushContextOk()) return false;
 
   const permission = await Notification.requestPermission();
@@ -82,7 +93,7 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
 
 /** 권한은 있으나 구독이 없을 때 서버에 다시 등록 */
 export async function ensurePushSubscription(): Promise<boolean> {
-  if (!isPushSupported() || Notification.permission !== "granted") {
+  if (Notification.permission !== "granted" || !(await hasPushManager())) {
     return false;
   }
 
@@ -113,9 +124,36 @@ export async function ensurePushSubscription(): Promise<boolean> {
 }
 
 export async function hasActivePushSubscription(): Promise<boolean> {
-  if (!isPushSupported() || Notification.permission !== "granted") {
+  if (Notification.permission !== "granted" || !(await hasPushManager())) {
     return false;
   }
   const reg = await navigator.serviceWorker.ready;
   return (await reg.pushManager.getSubscription()) != null;
+}
+
+/** 배너 표시 여부 판단용 */
+export async function getPushSetupState(): Promise<
+  "unsupported" | "server_off" | "ios_browser" | "denied" | "ready" | "need_enable" | "need_reconnect"
+> {
+  if (!isPushSupported() || !(await hasPushManager())) return "unsupported";
+
+  const config = await fetchPushConfig();
+  if (!config.enabled) return "server_off";
+
+  if (!isPushContextOk()) return "ios_browser";
+
+  const permission = Notification.permission;
+  if (permission === "denied") return "denied";
+  if (permission === "granted") {
+    if (await hasActivePushSubscription()) return "ready";
+    return "need_reconnect";
+  }
+  return "need_enable";
+}
+
+export const PUSH_PROMPT_OPEN_EVENT = "photo-drive-open-push-prompt";
+
+export function openPushPrompt(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(PUSH_PROMPT_OPEN_EVENT));
 }
