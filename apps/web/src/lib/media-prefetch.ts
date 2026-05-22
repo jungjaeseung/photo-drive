@@ -1,20 +1,39 @@
 import type { MediaDetailData } from "@/components/media/media-detail";
 
 const detailCache = new Map<string, MediaDetailData>();
+const loadedPreviewUrls = new Set<string>();
 const loadedOriginalUrls = new Set<string>();
 const inflight = new Map<string, Promise<MediaDetailData | null>>();
 
-function preloadImage(url: string): Promise<void> {
-  if (loadedOriginalUrls.has(url)) return Promise.resolve();
-  return new Promise((resolve) => {
+/** 다운로드 + 디코드 완료까지 (화면에 progressive로 그려지는 것 방지) */
+export function loadDecodedImage(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      loadedOriginalUrls.add(url);
-      resolve();
+      const finish = () => {
+        loadedOriginalUrls.add(url);
+        resolve();
+      };
+      if (typeof img.decode === "function") {
+        img.decode().then(finish).catch(finish);
+      } else {
+        finish();
+      }
     };
-    img.onerror = () => resolve();
+    img.onerror = () => reject(new Error("image load failed"));
     img.src = url;
   });
+}
+
+function preloadImage(url: string, loadedSet: Set<string>): Promise<void> {
+  if (loadedSet.has(url)) return Promise.resolve();
+  return loadDecodedImage(url)
+    .then(() => {
+      loadedSet.add(url);
+    })
+    .catch(() => {
+      /* prefetch 실패는 무시 */
+    });
 }
 
 function preloadVideo(url: string): void {
@@ -27,16 +46,27 @@ function preloadVideo(url: string): void {
   loadedOriginalUrls.add(url);
 }
 
-async function preloadOriginalAsset(data: MediaDetailData): Promise<void> {
-  if (data.type === "image") {
-    const url = data.originalUrl ?? data.previewUrl;
-    if (url) await preloadImage(url);
-    return;
-  }
+/** 미리보기(medium) — 상세 화면 즉시 표시용 */
+async function preloadPreviewAsset(data: MediaDetailData): Promise<void> {
+  if (data.type !== "image") return;
+  const url = data.previewUrl ?? data.thumbnailUrl;
+  if (url) await preloadImage(url, loadedPreviewUrls);
+}
 
-  if (data.type === "video" && data.videoPreviewUrl) {
-    preloadVideo(data.videoPreviewUrl);
-  }
+/** 원본 — 백그라운드만, 열기/스와이프를 막지 않음 */
+export function preloadOriginalInBackground(data: MediaDetailData): void {
+  void (async () => {
+    if (data.type === "image") {
+      if (data.originalUrl) {
+        await preloadImage(data.originalUrl, loadedOriginalUrls);
+      }
+      return;
+    }
+
+    if (data.videoPreviewUrl) {
+      preloadVideo(data.videoPreviewUrl);
+    }
+  })();
 }
 
 export function isOriginalUrlCached(url: string | undefined): boolean {
@@ -53,7 +83,7 @@ export async function prefetchMediaDetail(
 ): Promise<MediaDetailData | null> {
   const cached = detailCache.get(id);
   if (cached) {
-    void preloadOriginalAsset(cached);
+    void preloadPreviewAsset(cached);
     return cached;
   }
 
@@ -66,7 +96,7 @@ export async function prefetchMediaDetail(
       if (!res.ok) return null;
       const data = (await res.json()) as MediaDetailData;
       detailCache.set(id, data);
-      await preloadOriginalAsset(data);
+      await preloadPreviewAsset(data);
       return data;
     } catch {
       return null;
@@ -79,12 +109,16 @@ export async function prefetchMediaDetail(
   return promise;
 }
 
+/** 이전/다음 항목: 메타 + 미리보기만 기다리고, 원본은 백그라운드 */
 export function prefetchAdjacentMedia(
   ids: (string | undefined)[],
   base: string
 ): void {
   for (const id of ids) {
-    if (id) void prefetchMediaDetail(id, base);
+    if (!id) continue;
+    void prefetchMediaDetail(id, base).then((data) => {
+      if (data) preloadOriginalInBackground(data);
+    });
   }
 }
 

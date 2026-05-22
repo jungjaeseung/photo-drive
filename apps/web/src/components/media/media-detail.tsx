@@ -13,7 +13,7 @@ import {
   FolderPlus,
 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
-import { isOriginalUrlCached } from "@/lib/media-prefetch";
+import { loadDecodedImage } from "@/lib/media-prefetch";
 import { prefetchMediaImages } from "@/lib/media-image-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -59,7 +59,7 @@ export function MediaDetail({
   hasPrev = false,
   hasNext = false,
 }: MediaDetailProps) {
-  const [originalLoaded, setOriginalLoaded] = useState(false);
+  const [originalReady, setOriginalReady] = useState(false);
   const [originalLoading, setOriginalLoading] = useState(false);
   const [playOriginalVideo, setPlayOriginalVideo] = useState(false);
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
@@ -81,30 +81,32 @@ export function MediaDetail({
     setPlayOriginalVideo(false);
   }, [media.id]);
 
+  const showOriginalLayer =
+    isImage && !!media.originalUrl && media.originalUrl !== previewSrc;
+
   useEffect(() => {
-    setOriginalLoaded(false);
+    setOriginalReady(false);
     setOriginalLoading(false);
-    if (!isImage || !media.originalUrl) return;
+    if (!showOriginalLayer || !media.originalUrl) return;
 
-    if (isOriginalUrlCached(media.originalUrl)) {
-      setOriginalLoaded(true);
-      return;
-    }
-
+    let cancelled = false;
     setOriginalLoading(true);
-    const img = new Image();
-    img.onload = () => {
-      setOriginalLoaded(true);
-      setOriginalLoading(false);
-    };
-    img.onerror = () => setOriginalLoading(false);
-    img.src = media.originalUrl;
-  }, [media.id, media.originalUrl, isImage]);
 
-  const displaySrc =
-    isImage && originalLoaded && media.originalUrl
-      ? media.originalUrl
-      : previewSrc;
+    loadDecodedImage(media.originalUrl)
+      .then(() => {
+        if (!cancelled) setOriginalReady(true);
+      })
+      .catch(() => {
+        /* 원본 실패 시 미리보기만 유지 */
+      })
+      .finally(() => {
+        if (!cancelled) setOriginalLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [media.id, media.originalUrl, showOriginalLayer]);
 
   const handleSave = useCallback(() => {
     const url =
@@ -221,13 +223,29 @@ export function MediaDetail({
               />
             </div>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={`${media.id}-${displaySrc}`}
-              src={displaySrc}
-              alt={media.filename}
-              className="max-h-[55vh] max-w-full object-contain transition-opacity duration-300 lg:max-h-[60vh]"
-            />
+            <div className="relative flex max-h-[55vh] max-w-full items-center justify-center lg:max-h-[60vh]">
+              {previewSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewSrc}
+                  alt={media.filename}
+                  className={cn(
+                    "max-h-[55vh] max-w-full object-contain lg:max-h-[60vh]",
+                    originalReady &&
+                      showOriginalLayer &&
+                      "opacity-0 transition-opacity duration-200"
+                  )}
+                />
+              ) : null}
+              {originalReady && showOriginalLayer && media.originalUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={media.originalUrl}
+                  alt={media.filename}
+                  className="absolute max-h-[55vh] max-w-full object-contain opacity-100 lg:max-h-[60vh]"
+                />
+              ) : null}
+            </div>
           )}
         </div>
 
