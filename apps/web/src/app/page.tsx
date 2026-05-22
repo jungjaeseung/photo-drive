@@ -1,18 +1,14 @@
 "use client";
 
 import { GridActionBar } from "@/components/media/grid-action-bar";
+import { FavoritesFilterToggle } from "@/components/media/favorites-filter-toggle";
 import { MediaGrid } from "@/components/media/media-grid";
 import { MediaViewerLayer } from "@/components/media/media-viewer-layer";
+import { useFavoritesFilter } from "@/hooks/use-favorites-filter";
 import { useMediaGridInteraction } from "@/hooks/use-media-grid-interaction";
 import { useMediaViewer } from "@/hooks/use-media-viewer";
 import { useMediaList } from "@/hooks/use-media-list";
-import {
-  getLibraryFavoritesOnly,
-  setLibraryFavoritesOnly,
-} from "@/lib/library-favorites-filter";
-import { cn } from "@/lib/utils";
-import { Heart } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function getColumnCount(width: number) {
   if (width < 640) return 3;
@@ -21,21 +17,12 @@ function getColumnCount(width: number) {
 }
 
 export default function LibraryPage() {
-  const [favoritesFilter, setFavoritesFilter] = useState(false);
-  const [filterReady, setFilterReady] = useState(false);
-
-  useEffect(() => {
-    setFavoritesFilter(getLibraryFavoritesOnly());
-    setFilterReady(true);
-  }, []);
-
-  const toggleFavoritesFilter = useCallback(() => {
-    setFavoritesFilter((prev) => {
-      const next = !prev;
-      setLibraryFavoritesOnly(next);
-      return next;
-    });
-  }, []);
+  const {
+    favoritesOnly,
+    favoritesFilter,
+    filterReady,
+    toggle: toggleFavoritesFilter,
+  } = useFavoritesFilter();
 
   const {
     items,
@@ -46,7 +33,7 @@ export default function LibraryPage() {
     prependProcessingItem,
     loadItemsForDateKey,
     setItemFavorited,
-  } = useMediaList({ favoritesOnly: filterReady && favoritesFilter });
+  } = useMediaList({ favoritesOnly });
   const viewer = useMediaViewer();
   const { gridMode, handleLongPress, handleToggleDateGroup, loadingDateKey } =
     useMediaGridInteraction({ loadItemsForDateKey });
@@ -73,27 +60,11 @@ export default function LibraryPage() {
                   : `${items.length}개 항목`}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={
-              favoritesFilter ? "전체 보관함 보기" : "즐겨찾기만 보기"
-            }
-            aria-pressed={favoritesFilter}
-            onClick={toggleFavoritesFilter}
-            className={cn(
-              "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors",
-              favoritesFilter
-                ? "border-red-200 bg-red-50 text-red-500 dark:border-red-900 dark:bg-red-950/40"
-                : "border-zinc-200 text-zinc-500 dark:border-zinc-700"
-            )}
-          >
-            <Heart
-              className={cn(
-                "h-5 w-5",
-                favoritesFilter && "fill-red-500 text-red-500"
-              )}
-            />
-          </button>
+          <FavoritesFilterToggle
+            active={favoritesFilter}
+            onToggle={toggleFavoritesFilter}
+            className="mt-0.5"
+          />
         </div>
       </header>
       <div className="flex-1 overflow-hidden">
@@ -110,13 +81,14 @@ export default function LibraryPage() {
             mode={gridMode.mode}
             selectedIds={gridMode.selectedIds}
             onSelect={(item) => viewer.select(item.id)}
-          onToggleSelect={gridMode.toggleSelect}
-          onSelectMany={gridMode.selectMany}
-          onDeselectMany={gridMode.deselectMany}
-          onToggleDateGroup={handleToggleDateGroup}
+            onToggleSelect={gridMode.toggleSelect}
+            onSelectMany={gridMode.selectMany}
+            onDeselectMany={gridMode.deselectMany}
+            onToggleDateGroup={handleToggleDateGroup}
             loadingDateKey={loadingDateKey}
             onLongPress={handleLongPress}
             onFavoritedChange={setItemFavorited}
+            showFavoriteHearts={!favoritesFilter}
             hasMore={hasMore}
             loadingMore={loading}
             onLoadMore={loadMore}

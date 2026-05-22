@@ -23,6 +23,7 @@ interface MediaGridCellProps {
   onToggleSelect?: (id: string) => void;
   onLongPress?: (item: MediaGridItem) => void;
   onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
+  showFavoriteHeart?: boolean;
 }
 
 export function MediaGridCell({
@@ -35,6 +36,7 @@ export function MediaGridCell({
   onToggleSelect,
   onLongPress,
   onFavoritedChange,
+  showFavoriteHeart = true,
 }: MediaGridCellProps) {
   const [favorited, setFavorited] = useState(!!item.favorited);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
@@ -133,7 +135,9 @@ export function MediaGridCell({
           처리 중
         </span>
       )}
-      {item.status !== "processing" && mode !== "select" && (
+      {showFavoriteHeart &&
+        item.status !== "processing" &&
+        mode !== "select" && (
         <span className="absolute bottom-1 left-1">
           <FavoriteHeartButton
             favorited={favorited}
@@ -154,7 +158,7 @@ export function MediaGridCell({
             }}
           />
         </span>
-      )}
+        )}
       {mode === "select" && (
         <span className="absolute right-1 top-1">
           <SelectionCheck selected={selected} />

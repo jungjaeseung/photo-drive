@@ -122,7 +122,7 @@ export async function getFavoritedAmong(
 
 async function fetchMediaByIdsOrdered(
   mediaIds: string[],
-  type?: string
+  options?: { type?: string; albumId?: string }
 ): Promise<MediaDocument[]> {
   if (mediaIds.length === 0) return [];
 
@@ -144,7 +144,8 @@ async function fetchMediaByIdsOrdered(
   for (const id of mediaIds) {
     const doc = byId.get(id);
     if (!doc) continue;
-    if (type && doc.type !== type) continue;
+    if (options?.type && doc.type !== options.type) continue;
+    if (options?.albumId && !doc.albumIds.includes(options.albumId)) continue;
     items.push(doc);
   }
   return items;
@@ -153,6 +154,7 @@ async function fetchMediaByIdsOrdered(
 export async function searchFavoritedMedia(params: {
   userId: string;
   type?: string;
+  albumId?: string;
   cursor?: string;
   size?: number;
 }): Promise<{
@@ -213,7 +215,10 @@ export async function searchFavoritedMedia(params: {
   const pageFavs = favHits.slice(0, size);
   const mediaIds = pageFavs.map((h) => h._source.mediaId).filter(Boolean);
 
-  const items = await fetchMediaByIdsOrdered(mediaIds, params.type);
+  const items = await fetchMediaByIdsOrdered(mediaIds, {
+    type: params.type,
+    albumId: params.albumId,
+  });
 
   const last = favHits[Math.min(size - 1, favHits.length - 1)];
   const nextCursor =

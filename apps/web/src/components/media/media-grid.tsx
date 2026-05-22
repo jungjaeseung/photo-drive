@@ -42,6 +42,8 @@ interface MediaGridProps {
   loadingDateKey?: string | null;
   onLongPress?: (item: MediaGridItem) => void;
   onFavoritedChange?: (mediaId: string, favorited: boolean) => void;
+  /** 즐겨찾기만 보기일 때 셀 하트 숨김 */
+  showFavoriteHearts?: boolean;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -85,6 +87,7 @@ export function MediaGrid({
   loadingDateKey = null,
   onLongPress,
   onFavoritedChange,
+  showFavoriteHearts = true,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
@@ -285,6 +288,7 @@ export function MediaGrid({
                       onToggleSelect={onToggleSelect}
                       onLongPress={onLongPress}
                       onFavoritedChange={onFavoritedChange}
+                      showFavoriteHeart={showFavoriteHearts}
                     />
                   ))}
                 </div>

@@ -1,16 +1,14 @@
 "use client";
 
 import { CategoryPreviewThumb } from "@/components/collections/category-preview-thumb";
-import { Film, Heart, Image } from "lucide-react";
+import { Film, Image } from "lucide-react";
 import Link from "next/link";
 
 interface CategoryGridProps {
   photoThumbnailUrl?: string;
   videoThumbnailUrl?: string;
-  favoriteThumbnailUrl?: string;
   photoMediaId?: string;
   videoMediaId?: string;
-  favoriteMediaId?: string;
 }
 
 const categories = [
@@ -26,31 +24,21 @@ const categories = [
     icon: Film,
     thumbKey: "video" as const,
   },
-  {
-    href: "/collections/favorites",
-    label: "즐겨찾기",
-    icon: Heart,
-    thumbKey: "favorite" as const,
-  },
 ];
 
 export function CategoryGrid({
   photoThumbnailUrl,
   videoThumbnailUrl,
-  favoriteThumbnailUrl,
   photoMediaId,
   videoMediaId,
-  favoriteMediaId,
 }: CategoryGridProps) {
   const thumbs = {
     photo: photoThumbnailUrl,
     video: videoThumbnailUrl,
-    favorite: favoriteThumbnailUrl,
   };
   const thumbKeys = {
     photo: photoMediaId,
     video: videoMediaId,
-    favorite: favoriteMediaId,
   };
 
   return (

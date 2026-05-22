@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       ? await searchFavoritedMedia({
           userId: session.user.id,
           type,
+          albumId,
           cursor,
           size,
         })
