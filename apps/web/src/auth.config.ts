@@ -1,7 +1,17 @@
 import type { NextAuthConfig } from "next-auth";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const authConfig = {
   trustHost: true,
+  cookies: {
+    sessionToken: {
+      options: {
+        path: basePath || "/",
+        sameSite: "lax",
+      },
+    },
+  },
   pages: {
     /** next.config basePath가 자동으로 붙음 — /photos/login 이 되도록 내부 경로만 */
     signIn: "/login",

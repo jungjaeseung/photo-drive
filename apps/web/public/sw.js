@@ -76,9 +76,9 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.open(MEDIA_CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
-      if (cached) return cached;
+      if (cached?.ok) return cached;
 
-      const response = await fetch(event.request);
+      const response = await fetch(event.request, { credentials: "include" });
       if (response.ok) {
         void cache.put(event.request, response.clone());
       }

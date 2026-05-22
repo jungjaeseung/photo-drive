@@ -30,7 +30,7 @@ export function resolveMediaImage(src: string): Promise<string> {
   const pending = inflight.get(src);
   if (pending) return pending;
 
-  const promise = fetch(src, { cache: "force-cache" })
+  const promise = fetch(src, { cache: "force-cache", credentials: "include" })
     .then((res) => {
       if (!res.ok) throw new Error(`image fetch failed: ${res.status}`);
       return res.blob();
