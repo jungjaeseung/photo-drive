@@ -5,6 +5,7 @@ export type UploadXhrResult =
 
 export interface UploadXhrOptions {
   onProgress?: (percent: number) => void;
+  uploadBatchId?: string;
 }
 
 export function uploadMediaFile(
@@ -19,6 +20,9 @@ export function uploadMediaFile(
     formData.append("file", file);
     if (file.lastModified > 0) {
       formData.append("fileLastModified", String(file.lastModified));
+    }
+    if (options.uploadBatchId) {
+      formData.append("uploadBatchId", options.uploadBatchId);
     }
 
     xhr.upload.addEventListener("progress", (e) => {

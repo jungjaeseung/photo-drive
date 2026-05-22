@@ -67,6 +67,12 @@ export async function POST(request: Request) {
         ? parseInt(lastModifiedRaw, 10)
         : file.lastModified;
 
+    const uploadBatchIdRaw = formData.get("uploadBatchId");
+    const uploadBatchId =
+      typeof uploadBatchIdRaw === "string" && uploadBatchIdRaw.trim()
+        ? uploadBatchIdRaw.trim()
+        : undefined;
+
     const doc = buildInitialMediaDoc({
       id: mediaId,
       type: mediaType,
@@ -78,6 +84,7 @@ export async function POST(request: Request) {
       relativeOriginalPath,
       uploadedAt,
       fileLastModified,
+      uploadBatchId,
     });
 
     await indexMedia(doc);

@@ -1,4 +1,13 @@
-export type MediaJobName = "processImage" | "processVideo" | "deleteMedia";
+export type MediaJobName =
+  | "processImage"
+  | "processVideo"
+  | "deleteMedia"
+  | "notifyUploadBatch";
+
+export interface NotifyUploadBatchJobData {
+  batchId: string;
+  count: number;
+}
 
 export interface ProcessImageJobData {
   mediaId: string;
@@ -18,4 +27,5 @@ export interface DeleteMediaJobData {
 export type MediaJobData =
   | ProcessImageJobData
   | ProcessVideoJobData
-  | DeleteMediaJobData;
+  | DeleteMediaJobData
+  | NotifyUploadBatchJobData;

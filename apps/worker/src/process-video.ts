@@ -131,7 +131,7 @@ export async function processVideo(mediaId: string, storageRoot?: string): Promi
     );
 
     await updateMedia(mediaId, snapshot);
-    scheduleUploadCompleteNotify();
+    scheduleUploadCompleteNotify(doc.uploadBatchId, mediaId);
   } catch (error) {
     await updateMedia(mediaId, {
       status: "failed",

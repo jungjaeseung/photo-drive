@@ -58,6 +58,7 @@ export function buildInitialMediaDoc(params: {
   relativeOriginalPath: string;
   uploadedAt: Date;
   fileLastModified?: number;
+  uploadBatchId?: string;
 }): MediaDocument {
   const now = params.uploadedAt.toISOString();
   const takenAt = takenAtFromFileLastModified(
@@ -86,6 +87,9 @@ export function buildInitialMediaDoc(params: {
     uploadedAt: now,
     albumIds: [],
     favorite: false,
+    ...(params.uploadBatchId
+      ? { uploadBatchId: params.uploadBatchId }
+      : {}),
   };
 }
 

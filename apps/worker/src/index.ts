@@ -4,27 +4,46 @@ import { getRedisUrl } from "./config.js";
 import { processImage } from "./process-image.js";
 import { processVideo } from "./process-video.js";
 import { deleteMedia } from "./delete-media.js";
+import { finalizeUploadBatch } from "./push-notify.js";
 
 const connection = { url: getRedisUrl() };
 
 const worker = new Worker(
   QUEUE_MEDIA,
   async (job) => {
-    const { mediaId, storageRoot } = job.data as {
-      mediaId: string;
-      storageRoot?: string;
-    };
-
     switch (job.name) {
-      case "processImage":
+      case "processImage": {
+        const { mediaId, storageRoot } = job.data as {
+          mediaId: string;
+          storageRoot?: string;
+        };
         await processImage(mediaId, storageRoot);
         break;
-      case "processVideo":
+      }
+      case "processVideo": {
+        const { mediaId, storageRoot } = job.data as {
+          mediaId: string;
+          storageRoot?: string;
+        };
         await processVideo(mediaId, storageRoot);
         break;
-      case "deleteMedia":
+      }
+      case "deleteMedia": {
+        const { mediaId, storageRoot } = job.data as {
+          mediaId: string;
+          storageRoot?: string;
+        };
         await deleteMedia(mediaId, storageRoot);
         break;
+      }
+      case "notifyUploadBatch": {
+        const { batchId, count } = job.data as {
+          batchId: string;
+          count: number;
+        };
+        await finalizeUploadBatch(batchId, count);
+        break;
+      }
       default:
         throw new Error(`Unknown job: ${job.name}`);
     }

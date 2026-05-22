@@ -23,6 +23,7 @@ export interface UploadQueueItem {
   progress?: number;
   mediaId?: string;
   errorMessage?: string;
+  uploadBatchId?: string;
 }
 
 const STATUS_RANK: Record<UploadQueueStatus, number> = {
@@ -61,6 +62,7 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const wasActiveRef = useRef(false);
+  const notifiedBatchesRef = useRef<Set<string>>(new Set());
 
   const isActive = items.some((i) => isActiveStatus(i.status));
 
@@ -77,12 +79,14 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
 
   const enqueue = useCallback((files: File[]) => {
     if (files.length === 0) return;
+    const uploadBatchId = uuidv4();
     const newItems: UploadQueueItem[] = files.map((file) => ({
       id: uuidv4(),
       file,
       fileName: file.name,
       fileSize: file.size,
       status: "pending",
+      uploadBatchId,
     }));
     setItems((prev) => [...prev, ...newItems]);
     // 파일 피커 닫힘 직후 pointer 이벤트가 outside-click으로 잡혀 Drawer가 바로 닫히는 것 방지
@@ -106,6 +110,7 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
 
         try {
           const result = await uploadMediaFile(pending.file, {
+            uploadBatchId: pending.uploadBatchId,
             onProgress: (percent) => {
               updateItem(pending.id, { progress: percent });
             },
@@ -206,6 +211,37 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
     }
     wasActiveRef.current = isActive;
   }, [isActive]);
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    const batchIds = [
+      ...new Set(
+        items.map((i) => i.uploadBatchId).filter((id): id is string => !!id)
+      ),
+    ];
+
+    for (const batchId of batchIds) {
+      if (notifiedBatchesRef.current.has(batchId)) continue;
+
+      const batchItems = items.filter((i) => i.uploadBatchId === batchId);
+      if (batchItems.length === 0) continue;
+      if (batchItems.some((i) => isActiveStatus(i.status))) continue;
+
+      const successCount = batchItems.filter(
+        (i) => i.status === "complete" && i.mediaId
+      ).length;
+
+      notifiedBatchesRef.current.add(batchId);
+
+      if (successCount === 0) continue;
+
+      void fetch(`${base}/api/push/batch-complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId, count: successCount }),
+      }).catch(() => {});
+    }
+  }, [items]);
 
   const activeCount = items.filter((i) => isActiveStatus(i.status)).length;
   const totalCount = items.length;

@@ -30,6 +30,8 @@ export interface MediaDocument {
   codec?: string;
   resolution?: string;
   errorMessage?: string;
+  /** 클라이언트 업로드 배치 — 푸시 알림 1회 묶음용 */
+  uploadBatchId?: string;
 }
 
 export interface AlbumDocument {

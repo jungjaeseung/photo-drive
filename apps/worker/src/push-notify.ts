@@ -3,11 +3,20 @@ import {
   listPushSubscriptions,
   removePushSubscription,
 } from "./push-subscriptions.js";
+import {
+  addBatchReadyItem,
+  clearBatchKeys,
+  getBatchExpected,
+  getBatchReadyCount,
+  setBatchExpectedCount,
+  tryClaimBatchSend,
+} from "./push-batch-redis.js";
 
-const DEBOUNCE_MS = 3000;
+/** 배치 ID 없는 단건·구버전: 마지막 ready 후 이 시간 지나면 1회 발송 */
+const LEGACY_IDLE_MS = 120_000;
 
-let pendingCount = 0;
-let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let legacyPendingCount = 0;
+let legacyFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let vapidConfigured = false;
 
 function ensureVapid(): boolean {
@@ -43,11 +52,7 @@ function notificationPayload(count: number): string {
   });
 }
 
-async function flushNotifications(): Promise<void> {
-  const count = pendingCount;
-  pendingCount = 0;
-  flushTimer = null;
-  if (count === 0) return;
+async function sendPushToAllDevices(count: number): Promise<void> {
   if (!ensureVapid()) return;
 
   const records = await listPushSubscriptions();
@@ -83,7 +88,12 @@ async function flushNotifications(): Promise<void> {
           await removePushSubscription(record.endpoint);
           console.warn("[push] 만료 구독 삭제:", statusCode);
         } else {
-          console.warn("[push] 발송 실패:", statusCode, record.endpoint.slice(0, 60), err);
+          console.warn(
+            "[push] 발송 실패:",
+            statusCode,
+            record.endpoint.slice(0, 60),
+            err
+          );
         }
       }
     })
@@ -94,12 +104,59 @@ async function flushNotifications(): Promise<void> {
   );
 }
 
-/** 업로드 처리 완료(ready) 건수를 묶어 푸시 알림 예약 */
-export function scheduleUploadCompleteNotify(): void {
+async function tryFlushBatch(batchId: string): Promise<void> {
+  const expected = await getBatchExpected(batchId);
+  if (expected == null || expected <= 0) return;
+
+  const ready = await getBatchReadyCount(batchId);
+  if (ready < expected) return;
+
+  const claimed = await tryClaimBatchSend(batchId);
+  if (!claimed) return;
+
+  await sendPushToAllDevices(expected);
+  await clearBatchKeys(batchId);
+}
+
+/** notifyUploadBatch job — 클라이언트가 배치 종료 시 기대 건수 전달 */
+export async function finalizeUploadBatch(
+  batchId: string,
+  expectedCount: number
+): Promise<void> {
+  if (expectedCount <= 0) return;
+  await setBatchExpectedCount(batchId, expectedCount);
+  await tryFlushBatch(batchId);
+}
+
+async function flushLegacyNotifications(): Promise<void> {
+  const count = legacyPendingCount;
+  legacyPendingCount = 0;
+  legacyFlushTimer = null;
+  if (count === 0) return;
+  await sendPushToAllDevices(count);
+}
+
+/**
+ * 업로드 처리 완료(ready) 시 호출.
+ * uploadBatchId가 있으면 배치가 모일 때까지 대기, 없으면 legacy idle 묶음.
+ */
+export function scheduleUploadCompleteNotify(
+  uploadBatchId?: string,
+  mediaId?: string
+): void {
   if (!ensureVapid()) return;
-  pendingCount += 1;
-  if (flushTimer) clearTimeout(flushTimer);
-  flushTimer = setTimeout(() => {
-    void flushNotifications();
-  }, DEBOUNCE_MS);
+
+  if (uploadBatchId && mediaId) {
+    void (async () => {
+      await addBatchReadyItem(uploadBatchId, mediaId);
+      await tryFlushBatch(uploadBatchId);
+    })();
+    return;
+  }
+
+  legacyPendingCount += 1;
+  if (legacyFlushTimer) clearTimeout(legacyFlushTimer);
+  legacyFlushTimer = setTimeout(() => {
+    void flushLegacyNotifications();
+  }, LEGACY_IDLE_MS);
 }
