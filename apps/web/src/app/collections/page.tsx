@@ -64,8 +64,15 @@ export default function CollectionsPage() {
         body: JSON.stringify({ name: name.trim() }),
       });
       if (!res.ok) throw new Error("앨범 생성 실패");
+      const created = (await res.json()) as AlbumGridItem;
       setName("");
       await loadAlbums();
+      if (reorderMode) {
+        setDraftAlbums((prev) => [
+          ...prev,
+          { ...created, mediaCount: 0, coverThumbnailUrl: undefined },
+        ]);
+      }
     } finally {
       setCreating(false);
     }
@@ -79,6 +86,7 @@ export default function CollectionsPage() {
   function cancelReorder() {
     setReorderMode(false);
     setDraftAlbums([]);
+    setName("");
   }
 
   async function saveReorder() {
@@ -166,13 +174,11 @@ export default function CollectionsPage() {
         </div>
 
         {reorderMode && (
-          <p className="mb-3 px-4 text-xs text-zinc-500">
-            앨범을 드래그하여 순서를 변경하세요.
-          </p>
-        )}
-
-        {!reorderMode && (
-          <div className="mb-4 flex gap-2 px-4">
+          <>
+            <p className="mb-3 px-4 text-xs text-zinc-500">
+              앨범을 드래그하여 순서를 변경하거나 새 앨범을 만드세요.
+            </p>
+            <div className="mb-4 flex gap-2 px-4">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -192,6 +198,7 @@ export default function CollectionsPage() {
               )}
             </Button>
           </div>
+          </>
         )}
 
         {loading ? (
