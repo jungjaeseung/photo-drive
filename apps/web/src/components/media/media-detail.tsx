@@ -2,7 +2,7 @@
 
 import { AlbumPickerDialog } from "@/components/media/album-picker-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { MediaNavItem } from "@/lib/media-nav-context";
 import {
@@ -11,9 +11,15 @@ import {
   CloudDownload,
   Download,
   FolderPlus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
-import { loadDecodedImage } from "@/lib/media-prefetch";
+import {
+  collectNeighborIds,
+  loadDecodedImage,
+  prefetchNeighborOriginals,
+} from "@/lib/media-prefetch";
 import { prefetchMediaImages } from "@/lib/media-image-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -154,12 +160,24 @@ export function MediaDetail({
 
   useEffect(() => {
     if (!open || navItems.length === 0) return;
-    const neighbors = [
-      navItems[currentIndex - 1]?.thumbnailUrl,
-      navItems[currentIndex + 1]?.thumbnailUrl,
-    ];
-    prefetchMediaImages(neighbors);
+    const thumbUrls: (string | undefined)[] = [];
+    for (let offset = -2; offset <= 2; offset++) {
+      if (offset === 0) continue;
+      thumbUrls.push(navItems[currentIndex + offset]?.thumbnailUrl);
+    }
+    prefetchMediaImages(thumbUrls);
   }, [open, navItems, currentIndex]);
+
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  useEffect(() => {
+    if (!open || !originalReady || !isImage || currentIndex < 0) return;
+    const neighborIds = collectNeighborIds(navItems, currentIndex, 2);
+    prefetchNeighborOriginals(neighborIds, base);
+  }, [open, originalReady, isImage, currentIndex, navItems, base]);
+
+  const canSave =
+    !!(media.originalUrl || media.previewUrl || media.videoPreviewUrl);
 
   const stripWindow = 5;
   const stripStart = Math.max(0, currentIndex - stripWindow);
@@ -168,9 +186,39 @@ export function MediaDetail({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col">
+      <DialogContent hideClose className="flex flex-col">
+        <DialogClose
+          className="absolute left-4 top-4 z-30 rounded-full bg-black/50 p-2"
+          aria-label="닫기"
+        >
+          <X className="h-5 w-5" />
+        </DialogClose>
+
+        <div className="absolute right-4 top-4 z-30 flex gap-2">
+          {onDelete && (
+            <Button
+              size="icon"
+              variant="destructive"
+              onClick={onDelete}
+              title="삭제"
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
+          )}
+          {canSave && (
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={handleSave}
+              title="저장"
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+
         <div
-          className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-4 pt-12"
+          className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-4 pt-14"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -298,16 +346,6 @@ export function MediaDetail({
             )}
           </div>
           <div className="flex gap-2">
-            {media.id && media.status !== "processing" && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setAlbumPickerOpen(true)}
-              >
-                <FolderPlus className="h-4 w-4" />
-                앨범 추가
-              </Button>
-            )}
             {canSwitchToOriginal && (
               <Button
                 size="sm"
@@ -317,15 +355,14 @@ export function MediaDetail({
                 {playOriginalVideo ? "미리보기" : "원본 재생"}
               </Button>
             )}
-            {(media.originalUrl || media.previewUrl || media.videoPreviewUrl) && (
-              <Button size="sm" variant="secondary" onClick={handleSave}>
-                <Download className="h-4 w-4" />
-                저장
-              </Button>
-            )}
-            {onDelete && (
-              <Button size="sm" variant="destructive" onClick={onDelete}>
-                삭제
+            {media.id && media.status !== "processing" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAlbumPickerOpen(true)}
+              >
+                <FolderPlus className="h-4 w-4" />
+                앨범 추가
               </Button>
             )}
           </div>

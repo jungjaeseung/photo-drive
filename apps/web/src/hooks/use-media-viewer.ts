@@ -4,11 +4,12 @@ import type { MediaDetailData } from "@/components/media/media-detail";
 import { useMediaNav } from "@/hooks/use-media-nav";
 import { getMediaNavContext } from "@/lib/media-nav-context";
 import {
+  collectNeighborIds,
   getPrefetchedMedia,
   prefetchAdjacentMedia,
   prefetchMediaDetail,
 } from "@/lib/media-prefetch";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export function useMediaViewer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -77,10 +78,15 @@ export function useMediaViewer() {
     };
   }, [selectedId, base, removeItem, select]);
 
+  const neighborIds = useMemo(
+    () => collectNeighborIds(nav.items, nav.index, 2),
+    [nav.items, nav.index]
+  );
+
   useEffect(() => {
     if (!selectedId || !media) return;
-    prefetchAdjacentMedia([nav.prevId, nav.nextId], base);
-  }, [selectedId, media?.id, nav.prevId, nav.nextId, base]);
+    prefetchAdjacentMedia(neighborIds, base);
+  }, [selectedId, media?.id, neighborIds, base]);
 
   return {
     selectedId,
