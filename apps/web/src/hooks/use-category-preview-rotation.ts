@@ -16,8 +16,8 @@ export function useCategoryPreviewRotation() {
   const [videoThumb, setVideoThumb] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
-  const lastPhotoIdRef = useRef<string | undefined>();
-  const lastVideoIdRef = useRef<string | undefined>();
+  const lastPhotoIdRef = useRef<string | undefined>(undefined);
+  const lastVideoIdRef = useRef<string | undefined>(undefined);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
