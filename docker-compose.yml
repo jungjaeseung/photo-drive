@@ -18,6 +18,7 @@ services:
       dockerfile: docker/Dockerfile.web
       args:
         NEXT_PUBLIC_BASE_PATH: /photos
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
     container_name: photo-drive-app
     environment:
       - NODE_ENV=production

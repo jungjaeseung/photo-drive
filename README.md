@@ -68,6 +68,16 @@ docker compose up -d app worker
 
 연속 업로드는 **3초 묶음** 후 `n개의 파일이 업로드 되었습니다` 알림 1회로 발송됩니다.
 
+**알림이 안 올 때**
+
+1. 서버에 VAPID 4개 변수가 설정됐는지 (`docker compose` 전에 `export` 또는 `.env`)
+2. `pnpm es:init` 후 `docker compose build && docker compose up -d app worker` (코드·env 반영)
+3. **홈 화면 아이콘으로 앱 실행** (iPhone은 Safari 탭만으로는 푸시 불가 — **다시 추가할 필요는 없음**, 기존 아이콘으로 열면 됨)
+4. 앱에서 **「알림 받기」** 탭 → iOS 알림 허용
+5. 「나중에」를 눌렀다면 배너가 숨겨짐 → 앱을 완전히 종료 후 다시 열거나, Safari 설정에서 사이트 데이터 초기화 후 재허용
+
+브라우저에서 확인: `https://…/photos/api/push/config` → `{"enabled":true,"vapidPublicKey":"…"}` 이어야 함.
+
 ## 로컬 개발
 
 ```bash
