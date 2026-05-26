@@ -18,11 +18,7 @@ import {
 } from "lucide-react";
 import { CachedImage } from "@/components/media/cached-image";
 import { PinchZoomImage } from "@/components/media/pinch-zoom-image";
-import {
-  collectNeighborIds,
-  loadDecodedImage,
-  prefetchNeighborOriginals,
-} from "@/lib/media-prefetch";
+import { loadDecodedImage } from "@/lib/media-prefetch";
 import { prefetchMediaImages } from "@/lib/media-image-cache";
 import { setFavorite } from "@/lib/favorite-api";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -191,14 +187,6 @@ export function MediaDetail({
     }
     prefetchMediaImages(thumbUrls);
   }, [open, navItems, currentIndex]);
-
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-
-  useEffect(() => {
-    if (!open || !originalReady || !isImage || currentIndex < 0) return;
-    const neighborIds = collectNeighborIds(navItems, currentIndex, 2);
-    prefetchNeighborOriginals(neighborIds, base);
-  }, [open, originalReady, isImage, currentIndex, navItems, base]);
 
   const canSave =
     !!(media.originalUrl || media.previewUrl || media.videoPreviewUrl);

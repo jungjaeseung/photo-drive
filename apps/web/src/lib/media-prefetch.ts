@@ -1,6 +1,15 @@
 import type { MediaDetailData } from "@/components/media/media-detail";
 
+const MAX_DETAIL_ENTRIES = 100;
 const detailCache = new Map<string, MediaDetailData>();
+
+function setDetailCache(id: string, data: MediaDetailData): void {
+  detailCache.set(id, data);
+  if (detailCache.size > MAX_DETAIL_ENTRIES) {
+    const oldest = detailCache.keys().next().value;
+    if (oldest) detailCache.delete(oldest);
+  }
+}
 const loadedPreviewUrls = new Set<string>();
 const loadedOriginalUrls = new Set<string>();
 const inflight = new Map<string, Promise<MediaDetailData | null>>();
@@ -39,12 +48,7 @@ function preloadImage(url: string, loadedSet: Set<string>): Promise<void> {
 }
 
 function preloadVideo(url: string): void {
-  if (loadedOriginalUrls.has(url)) return;
-  const link = document.createElement("link");
-  link.rel = "prefetch";
-  link.as = "video";
-  link.href = url;
-  document.head.appendChild(link);
+  // iOS Safari는 <link rel="prefetch"> video를 제대로 지원하지 않고 메모리만 점유하므로 마킹만 함
   loadedOriginalUrls.add(url);
 }
 
@@ -113,7 +117,7 @@ export async function prefetchMediaDetail(
       const res = await fetch(`${base}/api/media/${id}`);
       if (!res.ok) return null;
       const data = (await res.json()) as MediaDetailData;
-      detailCache.set(id, data);
+      setDetailCache(id, data);
       await preloadPreviewAsset(data);
       return data;
     } catch {

@@ -1,6 +1,6 @@
 /** 세션 동안 thumb/poster 등 그리드용 이미지 URL → blob URL 캐시 */
 
-const MAX_ENTRIES = 500;
+const MAX_ENTRIES = 80;
 
 const blobUrlBySrc = new Map<string, string>();
 const inflight = new Map<string, Promise<string>>();
